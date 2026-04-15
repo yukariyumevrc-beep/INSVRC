@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bouncer Staff List Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-color: #0f1115;
+        --card-bg: #1a1d24;
+        --accent-primary: #6c5ce7;
+        --accent-secondary: #00cec9;
+        --text-main: #ffffff;
+        --text-muted: #a0a0a0;
+        --danger: #ff7675;
+        --success: #55efc4;
+        --input-bg: #2d3436;
+        --border-color: #2d3436;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Outfit", sans-serif;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        padding: 40px 20px;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 1000px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      /* Header */
+      header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      header h1 {
+        font-size: 2.5rem;
+        background: linear-gradient(
+          135deg,
+          var(--accent-primary),
+          var(--accent-secondary)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 10px;
+      }
+
+      header p {
+        color: var(--text-muted);
+      }
+
+      /* Card Style */
+      .card {
+        background-color: var(--card-bg);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-color);
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-main);
+      }
+
+      /* Staff List Table */
+      .staff-list-container {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px;
+      }
+
+      th {
+        text-align: left;
+        padding: 12px;
+        color: var(--text-muted);
+        font-weight: 400;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      td {
+        padding: 12px;
+        vertical-align: middle;
+      }
+
+      /* Form Elements */
+      input[type="text"],
+      input[type="number"],
+      select {
+        background-color: var(--input-bg);
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 10px 14px;
+        color: var(--text-main);
+        width: 100%;
+        transition: all 0.2s ease;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.2);
+      }
+
+      /* Checkbox Custom Style */
+      .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      input[type="checkbox"] {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background-color: var(--input-bg);
+        border-radius: 6px;
+        cursor: pointer;
+        position: relative;
+        margin-right: 8px;
+      }
+
+      input[type="checkbox"]:checked {
+        background-color: var(--success);
+      }
+
+      input[type="checkbox"]:checked::after {
+        content: "✓";
+        position: absolute;
+        color: #000;
+        font-size: 14px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-weight: bold;
+      }
+
+      /* Buttons */
+      .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          var(--accent-primary),
+          var(--accent-secondary)
+        );
+        color: white;
+        box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+      }
+
+      .btn-primary:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+
+      .btn-danger {
+        background-color: rgba(255, 118, 117, 0.1);
+        color: var(--danger);
+      }
+
+      .btn-danger:hover {
+        background-color: rgba(255, 118, 117, 0.2);
+      }
+
+      .btn-icon {
+        padding: 8px;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text-muted);
+        border: none;
+        cursor: pointer;
+      }
+
+      .btn-icon:hover {
+        background-color: var(--input-bg);
+        color: var(--danger);
+      }
+
+      /* Output Area */
+      .output-group {
+        margin-bottom: 16px;
+      }
+
+      .output-label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      textarea {
+        width: 100%;
+        background-color: var(--input-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px;
+        color: var(--success);
+        font-family: "Consolas", monospace;
+        resize: vertical;
+        min-height: 100px;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: var(--accent-secondary);
+      }
+
+      /* Mode Toggle */
+      .toggle-container {
+        display: flex;
+        background-color: var(--input-bg);
+        padding: 4px;
+        border-radius: 8px;
+      }
+
+      .toggle-btn {
+        padding: 6px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        transition: all 0.2s;
+      }
+
+      .toggle-btn.active {
+        background-color: var(--card-bg);
+        color: var(--text-main);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        font-weight: 600;
+      }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background-color: var(--success);
+        color: #000;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        z-index: 1000;
+      }
+
+      .toast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      /* Animations */
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .row-anim {
+        animation: slideIn 0.3s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Paradise Staff Manager</h1>
+        <p>Manage staff lists for Golden Age and Seaside Glow.</p>
+
+        <div style="margin-top: 20px">
+          <select
+            id="storeSelector"
+            onchange="changeStore()"
+            style="
+              width: auto;
+              padding: 10px 20px;
+              font-size: 1.1rem;
+              background-color: var(--card-bg);
+              border: 1px solid var(--accent-primary);
+            "
+          >
+            <option value="golden-age">Golden Age</option>
+            <option value="seaside-glow">Seaside Glow</option>
+          </select>
+        </div>
+      </header>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Staff List</span>
+          <div style="display: flex; gap: 10px">
+            <!-- Hidden File Input -->
+            <input
+              type="file"
+              id="fileInput"
+              accept=".json,.csv"
+              style="display: none"
+              onchange="handleFileUpload(this)"
+            />
+
+            <button
+              class="btn btn-icon"
+              onclick="document.getElementById('fileInput').click()"
+              title="Load local file (after git pull)"
+              style="
+                border: 1px solid var(--border-color);
+                color: var(--text-main);
+              "
+            >
+              📂 Load File
+            </button>
+            <button
+              class="btn btn-icon"
+              onclick="loadFromWeb()"
+              title="Load from live website"
+              style="
+                border: 1px solid var(--border-color);
+                color: var(--text-main);
+              "
+            >
+              🌐 Load Live
+            </button>
+
+            <button
+              class="btn btn-primary"
+              onclick="importFromRaw()"
+              style="padding: 6px 16px; font-size: 0.9rem"
+            >
+              Import Raw
+            </button>
+
+            <div class="toggle-container" id="formatToggle">
+              <div class="toggle-btn active" onclick="setFormat('json')">
+                JSON
+              </div>
+              <div class="toggle-btn" onclick="setFormat('csv')">CSV</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="staff-list-container">
+          <table id="staffTable">
+            <thead>
+              <tr>
+                <th width="35%">Username</th>
+                <th width="20%">Staff Tracker (0-♾️)</th>
+                <th width="25%">Bouncer</th>
+                <th width="10%">Is Staff?</th>
+                <th width="10%"></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <!-- Rows will be injected here -->
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 20px">
+          <button class="btn btn-primary" onclick="addRow()">
+            + Add Member
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Output</span>
+          <div style="display: flex; gap: 10px">
+            <button class="btn btn-primary" onclick="downloadFile()">
+              <span>Download File</span>
+            </button>
+            <button class="btn btn-primary" onclick="copyToClipboard()">
+              <span>Copy Base64</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="output-group">
+          <span class="output-label">Raw Data (Preview / Import)</span>
+          <textarea
+            id="rawData"
+            style="
+              min-height: 80px;
+              color: var(--text-muted);
+              font-size: 0.9rem;
+            "
+          ></textarea>
+        </div>
+
+        <div class="output-group">
+          <span class="output-label">Base64 Encoded</span>
+          <textarea id="base64Output" readonly></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast">Copied to clipboard!</div>
+
+    <script>
+      // State
+      let staffData = [];
+      let outputFormat = "json"; // json or csv
+      let currentStore = "golden-age";
+
+      // Config defaults
+      const STORES = {
+        "golden-age": {
+          name: "Golden Age",
+          key: "bouncer_staff_data_golden_age",
+          path: "INSVRC/Paradise/golden-age/staff-lists.json",
+        },
+        "seaside-glow": {
+          name: "Seaside Glow",
+          key: "bouncer_staff_data_seaside_glow",
+          path: "INSVRC/Paradise/seaside-glow/staff-lists.json", // Assuming similar structure
+        },
+      };
+
+      // Rank 0 = Hidden/Optional (No Tracker)
+      const DEFAULT_ROW = { name: "", rank: 0, rolesInput: "1", isStaff: true };
+
+      // --- Initialization ---
+      document.addEventListener("DOMContentLoaded", () => {
+        // Restore last selected store?
+        const lastStore = localStorage.getItem("bouncer_last_store");
+        if (lastStore && STORES[lastStore]) {
+          currentStore = lastStore;
+          document.getElementById("storeSelector").value = currentStore;
+        }
+
+        loadData();
+        renderTable();
+        updateOutput();
+      });
+
+      // --- Logic ---
+
+      function changeStore() {
+        const selector = document.getElementById("storeSelector");
+        currentStore = selector.value;
+        localStorage.setItem("bouncer_last_store", currentStore);
+        loadData();
+        renderTable();
+        updateOutput();
+        showToast(`Switched to ${STORES[currentStore].name}`);
+      }
+
+      function loadData() {
+        const storeKey = STORES[currentStore].key;
+        const saved = localStorage.getItem(storeKey);
+        const savedFormat = localStorage.getItem("bouncer_format"); // Shared format pref for now
+
+        if (saved) {
+          staffData = JSON.parse(saved);
+          // Migration: if old data (which had .role integer), convert to .rolesInput string
+          staffData.forEach((row) => {
+            if (row.rolesInput === undefined && row.role !== undefined) {
+              row.rolesInput = row.role.toString();
+              delete row.role;
+            }
+          });
+        } else {
+          // Check for legacy single-store data to migrate ONCE
+          if (currentStore === "golden-age") {
+            const legacy = localStorage.getItem("bouncer_staff_data");
+            if (legacy) {
+              staffData = JSON.parse(legacy);
+            } else {
+              staffData = [
+                {
+                  name: "OwnerName",
+                  rank: 3,
+                  rolesInput: "1, 2, 4",
+                  isStaff: true,
+                },
+              ];
+            }
+          } else {
+            staffData = [
+              {
+                name: "OwnerName",
+                rank: 3,
+                rolesInput: "1, 2, 4",
+                isStaff: true,
+              },
+            ];
+          }
+        }
+
+        if (savedFormat) {
+          setFormat(savedFormat, false);
+        }
+      }
+
+      function saveData() {
+        const storeKey = STORES[currentStore].key;
+        localStorage.setItem(storeKey, JSON.stringify(staffData));
+        localStorage.setItem("bouncer_format", outputFormat);
+      }
+
+      function setFormat(format, render = true) {
+        outputFormat = format;
+
+        // Update UI
+        const toggles = document.querySelectorAll(".toggle-btn");
+        toggles.forEach((t) => t.classList.remove("active"));
+        if (format === "json") toggles[0].classList.add("active");
+        else toggles[1].classList.add("active");
+
+        if (render) updateOutput();
+      }
+
+      function addRow() {
+        staffData.push({ ...DEFAULT_ROW });
+        renderTable();
+        updateOutput();
+        saveData();
+      }
+
+      function removeRow(index) {
+        staffData.splice(index, 1);
+        renderTable();
+        updateOutput();
+        saveData();
+      }
+
+      function updateRow(index, field, value) {
+        staffData[index][field] = value;
+        updateOutput();
+        saveData();
+      }
+
+      function importFromRaw() {
+        const raw = document.getElementById("rawData").value;
+        try {
+          processImport(raw);
+          showToast("Imported successfully!", "#55efc4");
+        } catch (e) {
+          alert("Import failed: " + e.message);
+        }
+      }
+
+      function handleFileUpload(input) {
+        if (input.files && input.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            try {
+              processImport(e.target.result);
+              showToast(`Loaded ${input.files[0].name}`, "#55efc4");
+            } catch (err) {
+              alert("Error parsing file: " + err.message);
+            }
+            // Reset input so same file can be selected again
+            input.value = "";
+          };
+          reader.readAsText(input.files[0]);
+        }
+      }
+
+      function loadFromWeb() {
+        // Path relative to index.html
+        // e.g. Paradise/golden-age/staff-lists/staff.json
+        // NOTE: This requires index.html to be in the root of INSVRC or correctly relative
+        // We know index.html is in INSVRC/, and Paradise is in INSVRC/Paradise.
+        // So the relative path is ./Paradise/...
+
+        let relPath = STORES[currentStore].path;
+        // If path starts with INSVRC/, strip it because we are IN INSVRC/
+        if (relPath.startsWith("INSVRC/")) {
+          relPath = relPath.substring(7);
+        }
+
+        fetch(relPath)
+          .then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.text();
+          })
+          .then((text) => {
+            processImport(text);
+            showToast("Loaded from Live Website!", "#55efc4");
+          })
+          .catch((err) => {
+            console.error(err);
+            alert(
+              `Failed to load from website (Path: ${relPath}).\nIf you are running this locally, you cannot fetch files due to CORS.\nPlease use "Load File" instead.`
+            );
+          });
+      }
+
+      function processImport(rawString) {
+        let imported = JSON.parse(rawString);
+        if (!Array.isArray(imported)) throw new Error("Data must be an array");
+
+        // Map to internal structure
+        staffData = imported.map((item) => ({
+          name: item.name || "Unknown",
+          rank: item.rank !== undefined ? item.rank : 0,
+          rolesInput: (item.bouncerRole !== undefined
+            ? item.bouncerRole
+            : item.role || "0"
+          ).toString(),
+          isStaff: item.isStaff !== undefined ? item.isStaff : true,
+        }));
+
+        renderTable();
+        updateOutput();
+        saveData();
+      }
+
+      // --- Rendering ---
+
+      function renderTable() {
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+
+        staffData.forEach((row, index) => {
+          const tr = document.createElement("tr");
+          tr.className = "row-anim";
+          tr.innerHTML = `
+                <td>
+                    <input type="text" placeholder="VRChat Display Name" value="${
+                      row.name
+                    }" oninput="updateRow(${index}, 'name', this.value)">
+                </td>
+                <td>
+                     <input type="number" placeholder="0 = None" value="${
+                       row.rank === 0 ? "" : row.rank
+                     }" oninput="updateRow(${index}, 'rank', parseInt(this.value) || 0)">
+                </td>
+                <td>
+                    <input type="text" placeholder="Role IDs (e.g. 1, 2, 4)" value="${
+                      row.rolesInput
+                    }" oninput="updateRow(${index}, 'rolesInput', this.value)">
+                </td>
+                <td>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" ${
+                          row.isStaff ? "checked" : ""
+                        } onchange="updateRow(${index}, 'isStaff', this.checked)">
+                        <span>Yes</span>
+                    </div>
+                </td>
+                <td style="text-align: right;">
+                    <button class="btn-icon" onclick="removeRow(${index})" title="Remove">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </td>
+            `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      function calculateRoleSum(inputStr) {
+        if (!inputStr) return 0;
+        // Split by comma, parse ints, sum them (using Bitwise OR for flags)
+        const parts = inputStr.toString().split(/[, ]+/);
+        let sum = 0;
+        parts.forEach((p) => {
+          const val = parseInt(p.trim());
+          if (!isNaN(val)) {
+            sum |= val;
+          }
+        });
+        return sum;
+      }
+
+      function updateOutput() {
+        let rawString = "";
+
+        if (outputFormat === "json") {
+          // Transform
+          const exportData = staffData.map((s) => ({
+            name: s.name,
+            bouncerRole: calculateRoleSum(s.rolesInput),
+            isStaff: s.isStaff,
+            rank: s.rank,
+          }));
+          rawString = JSON.stringify(exportData, null, 2);
+        } else {
+          // CSV: Name, Rank, IsStaff, Role
+          rawString = staffData
+            .map((s) => {
+              const roleSum = calculateRoleSum(s.rolesInput);
+              return `${s.name}, ${s.rank}, ${s.isStaff}, ${roleSum}`;
+            })
+            .join("\n");
+        }
+
+        document.getElementById("rawData").value = rawString;
+
+        // Base64 Encode (UTF-8)
+        const encoded = btoa(unescape(encodeURIComponent(rawString)));
+        document.getElementById("base64Output").value = encoded;
+      }
+
+      // --- Utils ---
+
+      function downloadFile() {
+        const rawContent = document.getElementById("rawData").value;
+        const blob = new Blob([rawContent], { type: "text/plain" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+
+        // Generate filename: staff_golden-age.json
+        const ext = outputFormat;
+        const filename = `staff_${currentStore}.${ext}`;
+
+        a.style.display = "none";
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        window.URL.revokeObjectURL(url);
+        showToast(`Downloaded ${filename}`);
+      }
+
+      function copyToClipboard() {
+        const copyText = document.getElementById("base64Output");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value).then(() => {
+          showToast("Copied to clipboard!");
+        });
+      }
+
+      function showToast(msg = "Copied to clipboard!", color = "#55efc4") {
+        const toast = document.getElementById("toast");
+        toast.textContent = msg;
+        toast.style.backgroundColor = color;
+        toast.classList.add("show");
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 2000);
+      }
+    </script>
+  </body>
+</html>
