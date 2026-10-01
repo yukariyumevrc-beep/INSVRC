@@ -156,3 +156,53 @@ VRAM ไม่ต่างกันเลยเพราะทั้งคู่
 | JPG เพดาน 600 KB | เต็ม 2048 px ✅ | 3.0 MB |
 
 ถ้าต้องคุมขนาดไฟล์จริงจัง JPG ชนะขาด
+
+---
+
+## หลายแกลเลอรีใน repo เดียว
+
+โครงปัจจุบัน — **แต่ละโฟลเดอร์คือสไลด์โชว์อิสระ ต้องมี `config.json` ของตัวเอง**
+
+```
+gallery/
+  galleries.json              รายชื่อแกลเลอรีทั้งหมด ใช้โดยหน้าเว็บ
+  index.html                  หน้ารวม แสดงทุกแกลเลอรีพร้อม URL
+  Paradise/
+    config.json               count / duration / loop ของชุดนี้
+    images/  0.png 1.png ...
+  Partner/
+    partner_vertical/
+      config.json
+      images/
+    partner_wide/
+      config.json
+      images/
+```
+
+`duration` กับ `loop` แยกกันได้อิสระ — จอ partner จะเปลี่ยนรูปทุก 5 วิ
+ขณะที่จอ Paradise เปลี่ยนทุก 10 วิ ก็ทำได้
+
+### ใน Unity
+
+**หนึ่งแกลเลอรี = หนึ่ง GallerySlideshow** เพราะแต่ละชุดมีรูปและจังหวะคนละแบบ
+
+| แกลเลอรี | จอที่ใส่ใน Screens |
+|---|---|
+| Paradise | จอหลักทั้งหมด |
+| Partner แนวตั้ง | จอป้ายแนวตั้ง |
+| Partner แนวนอน | จอป้ายแนวนอน |
+
+ส่วนภายในแกลเลอรีเดียวกัน จอกี่จอก็ใช้ script ตัวเดียวได้ (ใส่ใน `Screens`)
+
+### เพิ่มรูปให้แกลเลอรีไหน
+
+```powershell
+.\tools\build-gallery.ps1 -Album "Paradise\paradise_central_control\gallery\Partner\partner_wide" -Source "D:\pics\partner" -Format png
+```
+
+สคริปต์เขียน `config.json` ของโฟลเดอร์นั้นให้เอง ไม่ไปยุ่งกับแกลเลอรีอื่น
+
+### เพิ่มแกลเลอรีใหม่
+
+สร้างโฟลเดอร์ + `config.json` + `images/` แล้วเติมหนึ่งบรรทัดใน `galleries.json`
+หน้าเว็บจะขึ้นให้เองโดยไม่ต้องแก้ `index.html`

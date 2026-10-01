@@ -1,0 +1,7 @@
+{
+  "galleries": [
+    { "name": "Paradise",         "path": "Paradise" },
+    { "name": "Partner — แนวตั้ง", "path": "Partner/partner_vertical" },
+    { "name": "Partner — แนวนอน", "path": "Partner/partner_wide" }
+  ]
+}
