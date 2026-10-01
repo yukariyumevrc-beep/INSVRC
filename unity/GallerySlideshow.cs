@@ -24,7 +24,7 @@ public class GallerySlideshow : UdonSharpBehaviour
     [SerializeField] private VRCUrl[] imageUrls;
 
     [Header("จอแสดงผล")]
-    [Tooltip("material ที่ใช้เชดเดอร์ INS/GalleryCrossfade")]
+    [Tooltip("material ที่ใช้เชดเดอร์ Paradise/GalleryCrossFade")]
     [SerializeField] private Material targetMat;
 
     [Tooltip("ระยะเวลาเฟดข้ามภาพ (วินาที)")]

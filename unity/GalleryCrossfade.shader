@@ -2,7 +2,7 @@
 // - เฟดข้ามระหว่างสองรูปด้วย _Blend (0 = TexA, 1 = TexB)
 // - ย่อรูปให้พอดีจอแบบไม่ยืด (contain fit) ส่วนที่เหลือเป็นสีดำ
 //   จึงผสมรูปแนวตั้งกับแนวนอนในชุดเดียวกันได้
-Shader "INS/GalleryCrossfade"
+Shader "Paradise/GalleryCrossFade"
 {
     Properties
     {

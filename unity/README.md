@@ -19,7 +19,7 @@
 ## ขั้นที่ 2 — สร้าง Material
 
 1. คลิกขวาใน Project > Create > Material ตั้งชื่อว่า `GalleryScreen`
-2. ที่ช่อง Shader ด้านบน เลือก **INS / GalleryCrossfade**
+2. ที่ช่อง Shader ด้านบน เลือก **Paradise / GalleryCrossFade**
 3. ยังไม่ต้องใส่รูป ปล่อยว่างไว้ — script จะใส่ให้ตอนรัน
 
 ## ขั้นที่ 3 — สร้างจอ
