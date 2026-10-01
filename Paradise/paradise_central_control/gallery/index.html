@@ -26,29 +26,69 @@
   .meta { min-width:0; flex:1; }
   .idx { color:var(--dim); font-size:12px; }
   code { display:block; font:12px/1.5 ui-monospace,Consolas,monospace; color:var(--accent);
-         word-break:break-all; margin-top:2px; }
+         word-break:break-all; margin-top:2px; cursor:pointer; }
+  code:hover { text-decoration:underline; }
   button { font:inherit; font-size:13px; padding:5px 11px; border-radius:6px; cursor:pointer;
            border:1px solid var(--line); background:#1e2029; color:var(--fg); flex:none; }
   button:hover { border-color:var(--accent); }
+  button.failed { border-color:var(--warn); color:var(--warn); }
   .note { color:var(--dim); font-size:13px; padding:10px 0; }
 </style>
 </head>
 <body>
 <main>
   <h1>Central Control — Galleries</h1>
-  <p class="sub">แต่ละแกลเลอรีเป็นสไลด์โชว์อิสระ มี config.json ของตัวเอง — ใช้ Udon script คนละตัว</p>
+  <p class="sub">แต่ละแกลเลอรีเป็นสไลด์โชว์อิสระ มี config.json ของตัวเอง — ใช้ Udon script คนละตัว<br>
+     ปุ่มคัดลอกไม่ทำงาน? คลิกที่ตัว URL เพื่อเลือกทั้งบรรทัด แล้วกด Ctrl+C</p>
   <div id="root"><p class="note">กำลังโหลด…</p></div>
 </main>
 <script>
 const base = location.href.replace(/index\.html$/, '').replace(/\/?$/, '/');
 const root = document.getElementById('root');
 
-function copy(text, btn, label) {
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = 'คัดลอกแล้ว';
-    setTimeout(() => { btn.textContent = label; }, 1200);
-  });
+// execCommand ทำงานได้แม้หน้าต่างไม่ได้โฟกัส จึงใช้เป็นตัวสำรอง
+// ส่วน navigator.clipboard จะ reject เงียบ ๆ เวลาเบราว์เซอร์ไม่ได้โฟกัสอยู่
+function legacyCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) { return false; }
 }
+
+function copy(text, btn, label) {
+  const done = ok => {
+    btn.textContent = ok ? 'คัดลอกแล้ว' : 'ไม่ได้ — คลิกที่ URL แล้ว Ctrl+C';
+    btn.classList.toggle('failed', !ok);
+    setTimeout(() => { btn.textContent = label; btn.classList.remove('failed'); }, ok ? 1200 : 2600);
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => done(true), () => done(legacyCopy(text)));
+  } else {
+    done(legacyCopy(text));
+  }
+}
+
+// คลิกที่ URL เพื่อเลือกทั้งบรรทัด จะได้กด Ctrl+C เองได้ตลอด
+document.addEventListener('click', e => {
+  if (e.target && e.target.tagName === 'CODE') {
+    const r = document.createRange();
+    r.selectNodeContents(e.target);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+});
 
 function mkButton(label, text) {
   const b = document.createElement('button');

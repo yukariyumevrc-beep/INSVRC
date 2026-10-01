@@ -20,7 +20,7 @@ public class GallerySetupWindow : EditorWindow
     private int    _extIndex   = 0;                                   // 0 = png, 1 = jpg
     private readonly string[] _extNames = new string[] { "png", "jpg" };
 
-    private string _prefabDir = "Assets/whitelistsystem/URLGallery/Prefabs";
+    private string _prefabDir = "Assets/whitelistsystem/URLGallery/Prefab/Partner";
     private Vector2 _scroll;
 
     [MenuItem("Paradise/Gallery Setup")]
@@ -101,7 +101,16 @@ public class GallerySetupWindow : EditorWindow
     private string Base()
     {
         string u = (_galleryUrl == null) ? "" : _galleryUrl.Trim();
-        if (u.Length > 0 && !u.EndsWith("/")) u += "/";
+        if (u.Length == 0) return u;
+
+        // ยุบ / ที่ซ้อนกันจากการแก้มือ แต่อย่าไปแตะ // หลัง https:
+        int head = u.IndexOf("://");
+        string scheme = "";
+        if (head >= 0) { scheme = u.Substring(0, head + 3); u = u.Substring(head + 3); }
+        while (u.Contains("//")) u = u.Replace("//", "/");
+
+        u = scheme + u;
+        if (!u.EndsWith("/")) u += "/";
         return u;
     }
 
