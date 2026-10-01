@@ -44,6 +44,12 @@ public class ParadiseHubWindow : EditorWindow
             GallerySetupWindow.Open();
             Status("เปิด Gallery Setup");
         }
+
+        if (Button("ดึงอัปเดตจาก GitHub",
+                   "ดาวน์โหลด script / shader / เครื่องมือ เวอร์ชันล่าสุดมาทับ"))
+        {
+            ParadiseUpdater.UpdateFromGitHub();
+        }
         EndSection();
 
         // ---------- World Optimizer (เดิมคือ Paradise Tool) ----------

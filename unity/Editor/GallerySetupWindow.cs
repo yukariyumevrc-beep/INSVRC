@@ -32,7 +32,7 @@ public class GallerySetupWindow : EditorWindow
     private int    _extIndex   = 0;                                   // 0 = png, 1 = jpg
     private readonly string[] _extNames = new string[] { "png", "jpg" };
 
-    private string _prefabDir = "Assets/whitelistsystem/URLGallery/Prefab/Partner";
+    private string _prefabDir = "Assets/ParadiseSystem/URLGallery/Prefab";
     private Vector2 _scroll;
 
     // ไม่มี [MenuItem] โดยตั้งใจ — เปิดจากปุ่มใน Paradise Hub ที่เดียว
