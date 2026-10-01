@@ -11,22 +11,23 @@ using UnityEngine;
 /// </summary>
 public class GallerySetupWindow : EditorWindow
 {
-    private const string DefaultBase =
-        "https://yukariyumevrc-beep.github.io/INSVRC/Paradise/paradise_central_control/gallery/";
+    // ฐานของเว็บทั้งหมด ไม่ใช่แค่โฟลเดอร์ gallery เพราะบางแกลเลอรีอยู่นอกโฟลเดอร์นั้น
+    private const string SiteBase = "https://yukariyumevrc-beep.github.io/INSVRC/";
+    private const string GalleryDir = "Paradise/paradise_central_control/gallery/";
 
-    // ชื่อที่แสดง / โฟลเดอร์ย่อยใต้ gallery/
+    // ชื่อที่แสดง / ที่อยู่เทียบกับ SiteBase
     private static readonly string[] Shortcuts = new string[]
     {
-        "Paradise ตั้ง",  "Paradise/paradise_vertical",
-        "Paradise นอน",   "Paradise/paradise_wide",
-        "GoldenAge ตั้ง", "GoldenAge/goldenage_vertical",
-        "GoldenAge นอน",  "GoldenAge/goldenage_wide",
-        "Partner ตั้ง",   "Partner/partner_vertical",
-        "Partner นอน",    "Partner/partner_wide",
+        "Paradise ตั้ง",  GalleryDir + "Paradise/paradise_vertical",
+        "Paradise นอน",   GalleryDir + "Paradise/paradise_wide",
+        "GoldenAge ตั้ง", "Paradise/golden-age/Gallery/goldenage_vertical",
+        "GoldenAge นอน",  "Paradise/golden-age/Gallery/goldenage_wide",
+        "Partner ตั้ง",   GalleryDir + "Partner/partner_vertical",
+        "Partner นอน",    GalleryDir + "Partner/partner_wide",
     };
 
-    private string _galleryUrl = DefaultBase + "Paradise/paradise_vertical/";
-    private int    _slots      = 16;
+    private string _galleryUrl = SiteBase + GalleryDir + "Paradise/paradise_vertical/";
+    private int    _slots      = 32;   // ช่องว่างไม่กิน VRAM โหลดเฉพาะเท่าที่ config บอก
     private int    _startIndex = 0;
     private int    _extIndex   = 0;                                   // 0 = png, 1 = jpg
     private readonly string[] _extNames = new string[] { "png", "jpg" };
@@ -76,7 +77,7 @@ public class GallerySetupWindow : EditorWindow
 
                 if (GUILayout.Button(new GUIContent(Shortcuts[i], Shortcuts[i + 1]), style))
                 {
-                    _galleryUrl = DefaultBase + Shortcuts[i + 1] + "/";
+                    _galleryUrl = SiteBase + Shortcuts[i + 1] + "/";
                     GUI.FocusControl(null);   // ให้ช่อง URL อัปเดตที่แสดงทันที
                 }
             }

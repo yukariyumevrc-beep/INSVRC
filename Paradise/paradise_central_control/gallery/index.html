@@ -114,7 +114,8 @@ function detectNaming(dir) {
 }
 
 function renderGallery(g) {
-  const dir = base + g.path.replace(/\/?$/, '/');
+  // ใช้ new URL เพื่อให้พาธที่มี ../ ถูกยุบเป็น URL สะอาด ก๊อปไปวางใน Unity ได้เลย
+  const dir = new URL(g.path.replace(/\/?$/, '/'), base).href;
   const sec = document.createElement('section');
   sec.innerHTML = '<h2>' + g.name + '</h2><p class="note">กำลังอ่าน config…</p>';
   root.appendChild(sec);

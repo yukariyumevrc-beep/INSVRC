@@ -1,9 +1,10 @@
 {
+  "_comment": "path เป็นที่อยู่เทียบกับโฟลเดอร์ gallery/ นี้ — ใช้ ../ ชี้ออกไปนอกโฟลเดอร์ได้",
   "galleries": [
     { "name": "Paradise — แนวตั้ง",   "path": "Paradise/paradise_vertical" },
     { "name": "Paradise — แนวนอน",   "path": "Paradise/paradise_wide" },
-    { "name": "Golden Age — แนวตั้ง", "path": "GoldenAge/goldenage_vertical" },
-    { "name": "Golden Age — แนวนอน", "path": "GoldenAge/goldenage_wide" },
+    { "name": "Golden Age — แนวตั้ง", "path": "../../golden-age/Gallery/goldenage_vertical" },
+    { "name": "Golden Age — แนวนอน", "path": "../../golden-age/Gallery/goldenage_wide" },
     { "name": "Partner — แนวตั้ง",    "path": "Partner/partner_vertical" },
     { "name": "Partner — แนวนอน",    "path": "Partner/partner_wide" }
   ]
