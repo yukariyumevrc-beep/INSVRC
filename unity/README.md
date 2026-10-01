@@ -1,0 +1,81 @@
+# Gallery Slideshow — วิธีติดตั้งใน Unity
+
+ไฟล์ในโฟลเดอร์นี้
+
+| ไฟล์ | คืออะไร |
+|---|---|
+| `GallerySlideshow.cs` | UdonSharp script — โหลด config.json แล้วไล่โหลดรูปมาฉาย |
+| `GalleryCrossfade.shader` | เชดเดอร์จอ — เฟดข้ามภาพ + ย่อรูปพอดีจอโดยไม่ยืด |
+
+---
+
+## ขั้นที่ 1 — เอาไฟล์เข้า Unity
+
+ลาก `GallerySlideshow.cs` กับ `GalleryCrossfade.shader` ไปวางใน `Assets/` ของโปรเจกต์เวิลด์
+รอ Unity คอมไพล์จนไม่มี error ใน Console
+
+ต้องมี **UdonSharp** กับ **VRChat World SDK3** ติดตั้งอยู่แล้ว
+
+## ขั้นที่ 2 — สร้าง Material
+
+1. คลิกขวาใน Project > Create > Material ตั้งชื่อว่า `GalleryScreen`
+2. ที่ช่อง Shader ด้านบน เลือก **INS / GalleryCrossfade**
+3. ยังไม่ต้องใส่รูป ปล่อยว่างไว้ — script จะใส่ให้ตอนรัน
+
+## ขั้นที่ 3 — สร้างจอ
+
+1. ใน Hierarchy คลิกขวา > 3D Object > **Quad**
+2. ปรับ Scale ให้ได้สัดส่วนจอที่ต้องการ เช่น `X = 3.2, Y = 1.8` (= 16:9)
+3. ลาก material `GalleryScreen` ไปใส่ที่ Mesh Renderer ของ Quad
+
+**สำคัญ:** กลับไปที่ material แล้วตั้ง `Surface Aspect` = กว้างหารสูง ของ Quad
+เช่น Scale 3.2 x 1.8 ก็ใส่ `1.7778` — ใส่ผิดรูปจะเบี้ยว
+
+## ขั้นที่ 4 — ใส่ script
+
+1. เลือก Quad แล้วกด **Add Component** > `Gallery Slideshow`
+2. กรอกช่องต่าง ๆ
+
+| ช่อง | ใส่อะไร |
+|---|---|
+| Config Url | `https://yukariyumevrc-beep.github.io/INSVRC/Paradise/paradise_central_control/gallery/config.json` |
+| Image Urls | กด `+` 16 ครั้ง แล้ววาง URL ของรูปทีละช่อง |
+| Target Mat | ลาก material `GalleryScreen` มาใส่ |
+| Fade Time | `1.5` |
+| Fallback Duration | `10` |
+
+URL ทั้งหมดก๊อปได้จากหน้า
+`https://yukariyumevrc-beep.github.io/INSVRC/Paradise/paradise_central_control/gallery/`
+มีปุ่ม **คัดลอก URL รูปทั้งหมด** ให้อยู่แล้ว
+
+> ช่องที่เกินจำนวนรูปจริง **ปล่อยว่างไว้ได้** script ข้ามให้เอง
+> แต่จำนวนช่องทั้งหมดคือเพดานถาวร เพิ่มทีหลังต้อง build เวิลด์ใหม่ เลยใส่เผื่อไว้ 16
+
+## ขั้นที่ 5 — ทดสอบ
+
+กด Play ใน Unity รูปแรกจะขึ้นภายในไม่กี่วินาที แล้วเปลี่ยนภาพทุก 10 วินาที
+
+ถ้าไม่ขึ้น เปิด Console ดูข้อความที่ขึ้นต้นด้วย `[Gallery]`
+
+---
+
+## เรื่องที่ควรรู้
+
+**ภาพของแต่ละคนไม่ตรงกัน** — ทุกคนโหลดเองแยกกัน คนเข้าทีหลังจะเริ่มจากรูปแรกเสมอ
+ถ้าอยากให้ตรงกันทุกคนต้องเพิ่มการ sync ซึ่งซับซ้อนขึ้นพอควร
+
+**เปลี่ยนรูปทีหลังไม่ต้อง build เวิลด์ใหม่** — แค่รัน `build-gallery.ps1` แล้ว push
+ตราบใดที่จำนวนรูปไม่เกิน 16 และ URL ยังเป็นชุดเดิม
+
+**แก้ `duration` กับ `loop` ได้จากเว็บ** — อยู่ใน `config.json` ไม่ต้องแตะ Unity เลย
+
+**ตอน Play Mode ใน Unity** material จะถูกเขียนทับจริง ๆ พอหยุดเล่นรูปสุดท้ายจะยังค้างอยู่
+ไม่เป็นไร ไม่กระทบเวิลด์ที่ build ออกไป
+
+**ข้อจำกัดจาก VRChat** ที่ script จัดการให้แล้ว
+- โหลดได้ 1 รูปต่อ 5 วินาที — เลยยิงทีละใบเรียงกัน และฉายรูปแรกทันทีไม่รอครบ
+- รูปต้องไม่เกิน 2048x2048 — `build-gallery.ps1` ย่อให้แล้ว
+- สร้าง URL ตอนรันไม่ได้ — เลยต้องกรอก URL ทุกช่องไว้ล่วงหน้า
+
+**VRAM** รูป 2048px กินประมาณ 16 MB ต่อใบ 16 ใบ = ~250 MB
+ถ้าจะรองรับ Quest ให้ build ใหม่ด้วย `-MaxSize 1024` จะเหลือราว 1 ใน 4
