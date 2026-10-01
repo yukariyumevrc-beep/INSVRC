@@ -188,13 +188,32 @@ public class GallerySlideshow : UdonSharpBehaviour
         }
 
         if (_cur < 0) ShowFirst();   // ได้ใบแรกก็เริ่มฉายเลย ไม่ต้องรอครบ
+        ReportIfDone();
         FetchNext();
     }
 
     public override void OnImageLoadError(IVRCImageDownload result)
     {
-        Debug.LogWarning("[Gallery] โหลดรูปไม่สำเร็จ: " + result.Error);
+        // _fetched ถูกบวกไปแล้วตอนยิง request ใบนี้
+        Debug.LogWarning("[Gallery] ช่องที่ " + (_fetched - 1) + " โหลดไม่สำเร็จ: " + result.Error);
+        ReportIfDone();
         FetchNext();
+    }
+
+    /// สรุปผลให้ดูใน Console ตอนยิงครบทุกใบแล้ว
+    private void ReportIfDone()
+    {
+        if (_fetched < _count) return;
+
+        if (_ready == _count)
+        {
+            Debug.Log("[Gallery] โหลดครบ " + _ready + " ใบ");
+        }
+        else
+        {
+            Debug.LogWarning("[Gallery] โหลดได้ " + _ready + " จาก " + _count +
+                             " ใบ — จะวนเฉพาะใบที่โหลดสำเร็จ");
+        }
     }
 
     // ---------- ขนาดจอ ----------
@@ -270,8 +289,14 @@ public class GallerySlideshow : UdonSharpBehaviour
         {
             if (_timer < _duration) return;
 
+            // ยิง request ครบแล้วให้ยึดจำนวนที่โหลดสำเร็จจริง ไม่ใช่ count ใน config
+            // ไม่งั้นถ้ามีใบไหนโหลดพลาด สไลด์จะค้างรอรูปที่ไม่มีวันมาแล้ววนกลับไม่ได้
+            bool doneFetching = _fetched >= _count;
+            int  total        = doneFetching ? _ready : _count;
+            if (total <= 0) return;
+
             int n = _cur + 1;
-            if (n >= _count)
+            if (n >= total)
             {
                 if (!_loop) { _finished = true; return; }
                 n = 0;
