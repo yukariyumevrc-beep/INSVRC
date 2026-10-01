@@ -39,9 +39,21 @@ const base = location.href.replace(/index\.html$/, '').replace(/\/?$/, '/');
 const list = document.getElementById('list');
 const bar  = document.getElementById('bar');
 
-fetch(base + 'config.json', { cache: 'no-store' })
-  .then(r => r.ok ? r.json() : Promise.reject(r.status))
-  .then(cfg => {
+// config.json ไม่ได้บอกนามสกุลไฟล์ เลยยิง HEAD ถามรูปแรกเอาเอง
+function detectExt() {
+  if (typeof window.__ext === 'string') return Promise.resolve(window.__ext);
+  return fetch(base + 'images/1.png', { method: 'HEAD', cache: 'no-store' })
+    .then(r => r.ok ? 'png' : 'jpg')
+    .catch(() => 'jpg');
+}
+
+Promise.all([
+  fetch(base + 'config.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject(r.status)),
+  detectExt()
+])
+  .then(pair => {
+    const cfg = pair[0];
+    const ext = pair[1];
     const n = cfg.count | 0;
 
     bar.innerHTML =
@@ -58,15 +70,17 @@ fetch(base + 'config.json', { cache: 'no-store' })
 
     const urls = [];
     list.innerHTML = '';
+    // ไฟล์เริ่มนับจาก 1 (1.png) แต่ Element ใน Unity เริ่มนับจาก 0 — โชว์ทั้งคู่กันสับสน
     for (let i = 0; i < n; i++) {
-      const url = base + 'images/' + i + '.jpg';
+      const url = base + 'images/' + (i + 1) + '.' + ext;
       urls.push(url);
 
       const row = document.createElement('div');
       row.className = 'row';
       row.innerHTML =
-        '<img src="' + url + '" alt="' + i + '" loading="lazy">' +
-        '<div class="meta"><span class="idx">ช่องที่ ' + i + '</span><code>' + url + '</code></div>';
+        '<img src="' + url + '" alt="' + (i + 1) + '" loading="lazy">' +
+        '<div class="meta"><span class="idx">Element ' + i + '  →  ' + (i + 1) + '.' + ext +
+        '</span><code>' + url + '</code></div>';
 
       const btn = document.createElement('button');
       btn.textContent = 'คัดลอก';

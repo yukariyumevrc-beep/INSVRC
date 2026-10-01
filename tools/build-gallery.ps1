@@ -38,9 +38,12 @@ foreach ($d in @($srcDir, $outDir)) {
 }
 
 $exts  = @(".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff")
+# เรียงแบบรู้จักตัวเลข: 2.png ต้องมาก่อน 10.png (Sort-Object Name ธรรมดาจะสลับ)
 $files = Get-ChildItem -Path $srcDir -File |
          Where-Object { $exts -contains $_.Extension.ToLower() } |
-         Sort-Object Name
+         Sort-Object @{ Expression = { if ($_.BaseName -match '^\d+$') { 0 } else { 1 } } },
+                     @{ Expression = { if ($_.BaseName -match '^\d+$') { [int]$_.BaseName } else { 0 } } },
+                     Name
 
 if ($files.Count -eq 0) {
     Write-Host "ไม่พบรูปใน $srcDir" -ForegroundColor Yellow
@@ -89,7 +92,7 @@ foreach ($f in $files) {
 
         $g.DrawImage($img, 0, 0, $w, $h)
 
-        $name = "$n.$Format"          # ไล่เลขจาก 0
+        $name = "{0}.{1}" -f ($n + 1), $Format   # ไล่เลขจาก 1 (1.png, 2.png, ...)
         $dest = Join-Path $outDir $name
         if ($Format -eq "png") {
             $bmp.Save($dest, [System.Drawing.Imaging.ImageFormat]::Png)
