@@ -39,21 +39,32 @@ const base = location.href.replace(/index\.html$/, '').replace(/\/?$/, '/');
 const list = document.getElementById('list');
 const bar  = document.getElementById('bar');
 
-// config.json ไม่ได้บอกนามสกุลไฟล์ เลยยิง HEAD ถามรูปแรกเอาเอง
-function detectExt() {
-  if (typeof window.__ext === 'string') return Promise.resolve(window.__ext);
-  return fetch(base + 'images/1.png', { method: 'HEAD', cache: 'no-store' })
-    .then(r => r.ok ? 'png' : 'jpg')
-    .catch(() => 'jpg');
+// config.json ไม่ได้บอกนามสกุลไฟล์หรือเลขเริ่มต้น เลยยิง HEAD ถามเอาเอง
+function head(path) {
+  return fetch(base + path, { method: 'HEAD', cache: 'no-store' })
+    .then(r => r.ok).catch(() => false);
+}
+
+// ลองทั้ง 4 แบบ: 0.png / 1.png / 0.jpg / 1.jpg
+function detectNaming() {
+  return Promise.all([head('images/0.png'), head('images/1.png'),
+                      head('images/0.jpg'), head('images/1.jpg')])
+    .then(hit => {
+      if (hit[0]) return { ext: 'png', first: 0 };
+      if (hit[1]) return { ext: 'png', first: 1 };
+      if (hit[2]) return { ext: 'jpg', first: 0 };
+      return { ext: 'jpg', first: 1 };
+    });
 }
 
 Promise.all([
   fetch(base + 'config.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject(r.status)),
-  detectExt()
+  detectNaming()
 ])
   .then(pair => {
-    const cfg = pair[0];
-    const ext = pair[1];
+    const cfg   = pair[0];
+    const ext   = pair[1].ext;
+    const first = pair[1].first;
     const n = cfg.count | 0;
 
     bar.innerHTML =
@@ -70,16 +81,17 @@ Promise.all([
 
     const urls = [];
     list.innerHTML = '';
-    // ไฟล์เริ่มนับจาก 1 (1.png) แต่ Element ใน Unity เริ่มนับจาก 0 — โชว์ทั้งคู่กันสับสน
+    // โชว์คู่ Element ใน Unity กับชื่อไฟล์ กันสับสนเวลาเลขฐานไม่ตรงกัน
     for (let i = 0; i < n; i++) {
-      const url = base + 'images/' + (i + 1) + '.' + ext;
+      const name = (i + first) + '.' + ext;
+      const url  = base + 'images/' + name;
       urls.push(url);
 
       const row = document.createElement('div');
       row.className = 'row';
       row.innerHTML =
-        '<img src="' + url + '" alt="' + (i + 1) + '" loading="lazy">' +
-        '<div class="meta"><span class="idx">Element ' + i + '  →  ' + (i + 1) + '.' + ext +
+        '<img src="' + url + '" alt="' + name + '" loading="lazy">' +
+        '<div class="meta"><span class="idx">Element ' + i + '  →  ' + name +
         '</span><code>' + url + '</code></div>';
 
       const btn = document.createElement('button');

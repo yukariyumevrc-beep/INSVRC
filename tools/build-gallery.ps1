@@ -14,6 +14,9 @@ param(
     [int]$MaxSize     = 2048,       # ด้านยาวสุด - VRChat รับได้สูงสุด 2048
     [int]$Quality     = 90,         # คุณภาพ JPEG 1-100 (ไม่มีผลกับ PNG)
 
+    # เลขเริ่มต้นของชื่อไฟล์ 0 = 0.png, 1.png, ... (ตรงกับ Element ใน Unity)
+    [int]$StartIndex  = 0,
+
     # เพดานขนาดไฟล์ต่อรูป (KB) 0 = ไม่จำกัด
     # เกินเป้าแล้วสคริปต์จะไล่ลดคุณภาพ (JPEG) หรือย่อขนาด (PNG) ให้เองจนพอดี
     [int]$MaxFileKB   = 0,
@@ -77,7 +80,7 @@ foreach ($f in $files) {
             }
         }
 
-        $name = "{0}.{1}" -f ($n + 1), $Format   # ไล่เลขจาก 1 (1.png, 2.png, ...)
+        $name = "{0}.{1}" -f ($n + $StartIndex), $Format
         $dest = Join-Path $outDir $name
 
         # ลองบันทึกจนไฟล์เล็กพอ: JPEG ลดคุณภาพก่อน หมดทางค่อยย่อขนาด
