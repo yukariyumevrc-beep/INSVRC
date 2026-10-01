@@ -10,25 +10,41 @@ using VRC.Udon.Common.Interfaces;
 /// สไลด์โชว์ที่ดึงรูปจาก GitHub Pages มาแสดงบนวัสดุ (material)
 /// อ่าน config.json เพื่อเอา count / duration / loop แล้วค่อยไล่โหลดรูปทีละใบ
 ///
-/// หมายเหตุ: แต่ละคนในเวิลด์โหลดเองแยกกัน ภาพที่เห็นจึงอาจไม่ตรงกัน
-/// ถ้าต้องการให้ทุกคนเห็นภาพเดียวกันพร้อมกันต้องเพิ่มการ sync ทีหลัง
+/// จอปรับสัดส่วนตามรูปแต่ละใบเองเพื่อไม่ให้มีขอบดำ และผู้เล่นย่อ-ขยายจอได้ในเกม
+/// (ขนาดจอ sync ให้ทุกคนเห็นตรงกัน ส่วนรูปที่กำลังแสดงต่างคนต่างโหลด)
 /// </summary>
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class GallerySlideshow : UdonSharpBehaviour
 {
     [Header("URL — ก๊อปจากหน้า gallery/index.html")]
     [Tooltip(".../gallery/config.json")]
     [SerializeField] private VRCUrl configUrl;
 
-    [Tooltip(".../gallery/images/0.jpg, 1.jpg, ... เรียงตามลำดับ ช่องที่ไม่ใช้เว้นว่างได้")]
+    [Tooltip(".../gallery/images/1.png, 2.png, ... เรียงตามลำดับ ช่องที่ไม่ใช้เว้นว่างได้")]
     [SerializeField] private VRCUrl[] imageUrls;
 
     [Header("จอแสดงผล")]
     [Tooltip("material ที่ใช้เชดเดอร์ Paradise/GalleryCrossFade")]
     [SerializeField] private Material targetMat;
 
+    [Tooltip("Transform ของจอ เว้นว่างไว้จะใช้ตัวเอง")]
+    [SerializeField] private Transform screenTransform;
+
     [Tooltip("ระยะเวลาเฟดข้ามภาพ (วินาที)")]
     [SerializeField] private float fadeTime = 1.5f;
+
+    [Header("ปรับจอตามสัดส่วนรูป — กันขอบดำ")]
+    [Tooltip("เปิดไว้ จอจะเปลี่ยนรูปทรงตามรูปแต่ละใบ ปิดแล้วจอคงรูปเดิมและใช้ขอบดำแทน")]
+    [SerializeField] private bool autoFitScreen = true;
+
+    [Tooltip("กรอบใหญ่สุดที่จอโตได้ รูปจะถูกย่อให้อยู่ในกรอบนี้โดยคงสัดส่วน")]
+    [SerializeField] private Vector2 maxScreenSize = new Vector2(3.2f, 1.8f);
+
+    [Header("ให้ผู้เล่นปรับขนาดจอในเกม")]
+    [Tooltip("ขยาย/ย่อ ครั้งละกี่เท่า")]
+    [SerializeField] private float sizeStep = 1.15f;
+    [SerializeField] private float minSizeMul = 0.4f;
+    [SerializeField] private float maxSizeMul = 2.5f;
 
     [Header("ค่าสำรอง — ใช้เมื่ออ่าน config.json ไม่ได้")]
     [SerializeField] private float fallbackDuration = 10f;
@@ -49,8 +65,19 @@ public class GallerySlideshow : UdonSharpBehaviour
     private bool  _fading;
     private bool  _finished;
 
+    // ขนาดจอก่อนคูณตัวขยาย — ไล่จาก _baseFrom ไป _baseTo ระหว่างเฟด
+    private Vector2 _baseFrom, _baseTo, _baseNow;
+
+    // ตัวคูณขนาดที่ผู้เล่นปรับ sync ให้ทุกคนเห็นเท่ากัน
+    [UdonSynced] private float _sizeMul = 1f;
+
     void Start()
     {
+        if (screenTransform == null) screenTransform = transform;
+
+        Vector3 s = screenTransform.localScale;
+        _baseNow = _baseFrom = _baseTo = new Vector2(s.x, s.y);
+
         _duration   = fallbackDuration;
         _textures   = new Texture2D[imageUrls.Length];
         _downloader = new VRCImageDownloader();
@@ -170,6 +197,54 @@ public class GallerySlideshow : UdonSharpBehaviour
         FetchNext();
     }
 
+    // ---------- ขนาดจอ ----------
+
+    /// ย่อรูปให้พอดีกรอบ maxScreenSize โดยคงสัดส่วนเดิม
+    private Vector2 FitBox(Texture2D t)
+    {
+        if (t == null || t.width <= 0 || t.height <= 0) return maxScreenSize;
+
+        float a    = (float)t.width / (float)t.height;
+        float boxA = maxScreenSize.x / Mathf.Max(maxScreenSize.y, 0.0001f);
+
+        if (a > boxA) return new Vector2(maxScreenSize.x, maxScreenSize.x / a);
+        return new Vector2(maxScreenSize.y * a, maxScreenSize.y);
+    }
+
+    private void ApplyScreenSize()
+    {
+        if (screenTransform == null) return;
+
+        Vector3 s = screenTransform.localScale;
+        screenTransform.localScale = new Vector3(_baseNow.x * _sizeMul,
+                                                 _baseNow.y * _sizeMul,
+                                                 s.z);
+    }
+
+    // เรียกจากปุ่ม UI ในเวิลด์ได้เลย (SendCustomEvent)
+    public void ScreenBigger()  { SetSizeMul(_sizeMul * sizeStep); }
+    public void ScreenSmaller() { SetSizeMul(_sizeMul / sizeStep); }
+    public void ScreenReset()   { SetSizeMul(1f); }
+
+    private void SetSizeMul(float v)
+    {
+        // คนที่กดต้องเป็นเจ้าของก่อน ค่าถึงจะ sync ออกไปได้
+        if (!Networking.IsOwner(Networking.LocalPlayer, gameObject))
+        {
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        }
+
+        _sizeMul = Mathf.Clamp(v, minSizeMul, maxSizeMul);
+        ApplyScreenSize();
+        RequestSerialization();
+    }
+
+    /// คนอื่นปรับขนาด เราก็ขยับตาม
+    public override void OnDeserialization()
+    {
+        ApplyScreenSize();
+    }
+
     // ---------- แสดงผล ----------
 
     private void ShowFirst()
@@ -177,6 +252,10 @@ public class GallerySlideshow : UdonSharpBehaviour
         _cur    = 0;
         _timer  = 0f;
         _fading = false;
+
+        if (autoFitScreen) _baseNow = _baseFrom = _baseTo = FitBox(_textures[0]);
+        ApplyScreenSize();
+
         targetMat.SetTexture("_TexA", _textures[0]);
         targetMat.SetFloat("_Blend", 0f);
     }
@@ -203,6 +282,11 @@ public class GallerySlideshow : UdonSharpBehaviour
 
             _next = n;
             targetMat.SetTexture("_TexB", _textures[_next]);
+
+            // เตรียมยืดจอจากทรงของรูปปัจจุบันไปทรงของรูปถัดไป
+            _baseFrom = _baseNow;
+            _baseTo   = autoFitScreen ? FitBox(_textures[_next]) : _baseNow;
+
             _fading = true;
             _timer  = 0f;
             return;
@@ -211,9 +295,19 @@ public class GallerySlideshow : UdonSharpBehaviour
         float k = (fadeTime <= 0f) ? 1f : Mathf.Clamp01(_timer / fadeTime);
         targetMat.SetFloat("_Blend", k);
 
+        // จอค่อย ๆ เปลี่ยนรูปทรงไปพร้อมกับภาพที่เฟด
+        if (autoFitScreen)
+        {
+            _baseNow = Vector2.Lerp(_baseFrom, _baseTo, k);
+            ApplyScreenSize();
+        }
+
         if (k >= 1f)
         {
-            _cur = _next;
+            _cur     = _next;
+            _baseNow = _baseTo;
+            ApplyScreenSize();
+
             targetMat.SetTexture("_TexA", _textures[_cur]);
             targetMat.SetFloat("_Blend", 0f);
             _fading = false;

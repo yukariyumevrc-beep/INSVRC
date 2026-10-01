@@ -14,6 +14,10 @@ param(
     [int]$MaxSize     = 2048,       # ด้านยาวสุด - VRChat รับได้สูงสุด 2048
     [int]$Quality     = 90,         # คุณภาพ JPEG 1-100 (ไม่มีผลกับ PNG)
 
+    # เพดานขนาดไฟล์ต่อรูป (KB) 0 = ไม่จำกัด
+    # เกินเป้าแล้วสคริปต์จะไล่ลดคุณภาพ (JPEG) หรือย่อขนาด (PNG) ให้เองจนพอดี
+    [int]$MaxFileKB   = 0,
+
     # jpg = ไฟล์เล็ก เหมาะกับรูปถ่าย (ดีฟอลต์)
     # png = ไม่สูญเสียคุณภาพ เก็บความโปร่งใสได้ เหมาะกับโลโก้/ข้อความ/pixel art แต่ไฟล์ใหญ่กว่ามาก
     # หมายเหตุ: เปลี่ยนแล้ว URL จะเปลี่ยนตาม (0.jpg <-> 0.png) ต้องไปแก้ใน Unity ด้วย
@@ -54,11 +58,8 @@ if ($files.Count -eq 0) {
 # ล้าง output เก่า กันรูปที่ลบออกแล้วค้างอยู่ (ล้างทั้งสองนามสกุล เผื่อสลับ -Format)
 Get-ChildItem -Path $outDir -Include *.jpg, *.png -File -Recurse | Remove-Item -Force
 
-$codec     = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() |
-             Where-Object { $_.MimeType -eq "image/jpeg" }
-$encParams = New-Object System.Drawing.Imaging.EncoderParameters(1)
-$encParams.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter(
-    [System.Drawing.Imaging.Encoder]::Quality, [int64]$Quality)
+$codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() |
+         Where-Object { $_.MimeType -eq "image/jpeg" }
 
 $n = 0
 $vram = 0
@@ -76,33 +77,61 @@ foreach ($f in $files) {
             }
         }
 
-        $scale = [Math]::Min(1.0, $MaxSize / [double][Math]::Max($img.Width, $img.Height))
-        $w = [int][Math]::Round($img.Width  * $scale)
-        $h = [int][Math]::Round($img.Height * $scale)
-
-        $bmp = New-Object System.Drawing.Bitmap($w, $h, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
-        $g   = [System.Drawing.Graphics]::FromImage($bmp)
-        $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-        $g.PixelOffsetMode   = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-        $g.SmoothingMode     = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-
-        # JPEG ไม่มี alpha ต้องรองพื้นดำก่อน ไม่งั้นส่วนโปร่งใสจะเพี้ยน
-        # PNG เก็บ alpha ได้ จึงปล่อยพื้นโปร่งไว้
-        if ($Format -eq "jpg") { $g.Clear([System.Drawing.Color]::Black) }
-
-        $g.DrawImage($img, 0, 0, $w, $h)
-
         $name = "{0}.{1}" -f ($n + 1), $Format   # ไล่เลขจาก 1 (1.png, 2.png, ...)
         $dest = Join-Path $outDir $name
-        if ($Format -eq "png") {
-            $bmp.Save($dest, [System.Drawing.Imaging.ImageFormat]::Png)
-        } else {
-            $bmp.Save($dest, $codec, $encParams)
+
+        # ลองบันทึกจนไฟล์เล็กพอ: JPEG ลดคุณภาพก่อน หมดทางค่อยย่อขนาด
+        # PNG ไม่มีปุ่มคุณภาพ เลยย่อขนาดอย่างเดียว
+        $limit   = $MaxSize
+        $q       = $Quality
+        $noted   = ""
+
+        for ($try = 1; $try -le 8; $try++) {
+            if ($g)   { $g.Dispose();   $g = $null }
+            if ($bmp) { $bmp.Dispose(); $bmp = $null }
+
+            $scale = [Math]::Min(1.0, $limit / [double][Math]::Max($img.Width, $img.Height))
+            $w = [Math]::Max(1, [int][Math]::Round($img.Width  * $scale))
+            $h = [Math]::Max(1, [int][Math]::Round($img.Height * $scale))
+
+            $bmp = New-Object System.Drawing.Bitmap($w, $h, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+            $g   = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $g.PixelOffsetMode   = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+            $g.SmoothingMode     = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+
+            # JPEG ไม่มี alpha ต้องรองพื้นดำก่อน ไม่งั้นส่วนโปร่งใสจะเพี้ยน
+            # PNG เก็บ alpha ได้ จึงปล่อยพื้นโปร่งไว้
+            if ($Format -eq "jpg") { $g.Clear([System.Drawing.Color]::Black) }
+
+            $g.DrawImage($img, 0, 0, $w, $h)
+
+            if ($Format -eq "png") {
+                $bmp.Save($dest, [System.Drawing.Imaging.ImageFormat]::Png)
+            } else {
+                $ep = New-Object System.Drawing.Imaging.EncoderParameters(1)
+                $ep.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter(
+                    [System.Drawing.Imaging.Encoder]::Quality, [int64]$q)
+                $bmp.Save($dest, $codec, $ep)
+                $ep.Dispose()
+            }
+
+            if ($MaxFileKB -le 0) { break }
+            if ((Get-Item $dest).Length -le $MaxFileKB * 1KB) { break }
+
+            # ยังใหญ่เกินเป้า ลองใหม่
+            if ($Format -eq "jpg" -and $q -gt 55) {
+                $q -= 10
+                $noted = " (ลดคุณภาพเป็น $q)"
+            } else {
+                $limit = [int]($limit * 0.85)
+                $noted = " (ย่อเหลือ $limit px)"
+            }
         }
 
         $kb    = [int]((Get-Item $dest).Length / 1KB)
         $vram += $w * $h * 4 / 1MB
-        Write-Host ("  {0,-8} <- {1,-28} {2}x{3}  {4} KB" -f $name, $f.Name, $w, $h, $kb)
+        Write-Host ("  {0,-8} <- {1,-28} {2}x{3}  {4} KB{5}" -f $name, $f.Name, $w, $h, $kb, $noted)
         $n++
     }
     catch {
