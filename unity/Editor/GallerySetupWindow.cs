@@ -14,7 +14,16 @@ public class GallerySetupWindow : EditorWindow
     private const string DefaultBase =
         "https://yukariyumevrc-beep.github.io/INSVRC/Paradise/paradise_central_control/gallery/";
 
-    private string _galleryUrl = DefaultBase + "Partner/partner_wide/";
+    // ชื่อที่แสดง / โฟลเดอร์ย่อยใต้ gallery/
+    private static readonly string[] Shortcuts = new string[]
+    {
+        "Paradise ตั้ง", "Paradise/paradise_vertical",
+        "Paradise นอน",  "Paradise/paradise_wide",
+        "Partner ตั้ง",  "Partner/partner_vertical",
+        "Partner นอน",   "Partner/partner_wide",
+    };
+
+    private string _galleryUrl = DefaultBase + "Paradise/paradise_vertical/";
     private int    _slots      = 16;
     private int    _startIndex = 0;
     private int    _extIndex   = 0;                                   // 0 = png, 1 = jpg
@@ -23,7 +32,8 @@ public class GallerySetupWindow : EditorWindow
     private string _prefabDir = "Assets/whitelistsystem/URLGallery/Prefab/Partner";
     private Vector2 _scroll;
 
-    [MenuItem("Paradise/Gallery Setup", false, 1)]
+    // ไม่มี [MenuItem] โดยตั้งใจ — เปิดจากปุ่มใน Paradise Hub ที่เดียว
+    // เมนู Paradise จะได้ไม่รก
     public static void Open()
     {
         GallerySetupWindow w = GetWindow<GallerySetupWindow>(false, "Gallery Setup", true);
@@ -46,12 +56,18 @@ public class GallerySetupWindow : EditorWindow
         _galleryUrl = EditorGUILayout.TextField("Gallery URL", _galleryUrl);
 
         EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Paradise", EditorStyles.miniButtonLeft))
-            _galleryUrl = DefaultBase + "Paradise/";
-        if (GUILayout.Button("Partner แนวตั้ง", EditorStyles.miniButtonMid))
-            _galleryUrl = DefaultBase + "Partner/partner_vertical/";
-        if (GUILayout.Button("Partner แนวนอน", EditorStyles.miniButtonRight))
-            _galleryUrl = DefaultBase + "Partner/partner_wide/";
+        for (int i = 0; i < Shortcuts.Length; i += 2)
+        {
+            GUIStyle style = (i == 0) ? EditorStyles.miniButtonLeft
+                           : (i >= Shortcuts.Length - 2) ? EditorStyles.miniButtonRight
+                           : EditorStyles.miniButtonMid;
+
+            if (GUILayout.Button(new GUIContent(Shortcuts[i], Shortcuts[i + 1]), style))
+            {
+                _galleryUrl = DefaultBase + Shortcuts[i + 1] + "/";
+                GUI.FocusControl(null);   // ให้ช่อง URL อัปเดตที่แสดงทันที
+            }
+        }
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.Space();

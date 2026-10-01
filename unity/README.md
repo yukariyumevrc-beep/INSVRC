@@ -45,7 +45,7 @@
 
 | ช่อง | ใส่อะไร |
 |---|---|
-| Config Url | `https://yukariyumevrc-beep.github.io/INSVRC/Paradise/paradise_central_control/gallery/config.json` |
+| Config Url | `https://yukariyumevrc-beep.github.io/INSVRC/Paradise/paradise_central_control/gallery/Paradise/paradise_vertical/config.json` |
 | Image Urls | กด `+` 16 ครั้ง แล้ววาง URL ของรูปทีละช่อง |
 | Screens | ลากจอทุกจอมาใส่ (เว้นว่าง = ใช้ Mesh Renderer ของตัวเอง) |
 | Fade Time | `1.5` |
@@ -168,8 +168,12 @@ gallery/
   galleries.json              รายชื่อแกลเลอรีทั้งหมด ใช้โดยหน้าเว็บ
   index.html                  หน้ารวม แสดงทุกแกลเลอรีพร้อม URL
   Paradise/
-    config.json               count / duration / loop ของชุดนี้
-    images/  0.png 1.png ...
+    paradise_vertical/
+      config.json             count / duration / loop ของชุดนี้
+      images/  0.png 1.png ...
+    paradise_wide/
+      config.json
+      images/
   Partner/
     partner_vertical/
       config.json
@@ -178,6 +182,9 @@ gallery/
       config.json
       images/
 ```
+
+4 แกลเลอรี แยกแนวตั้ง/แนวนอน ทั้งฝั่ง Paradise และ Partner — จอแนวตั้งกับจอแนวนอน
+จะได้ใช้รูปที่ครอปมาให้พอดีสัดส่วนของตัวเอง ไม่ต้องยัดรูปเดียวกันลงทุกจอ
 
 `duration` กับ `loop` แยกกันได้อิสระ — จอ partner จะเปลี่ยนรูปทุก 5 วิ
 ขณะที่จอ Paradise เปลี่ยนทุก 10 วิ ก็ทำได้
@@ -211,12 +218,12 @@ gallery/
 
 ## เครื่องมือเติม URL — ไม่ต้องกรอกทีละช่อง
 
-`Editor/GallerySetupWindow.cs` เพิ่มเมนู **Paradise > Gallery Setup** ใน Unity
+`Editor/GallerySetupWindow.cs` เป็นหน้าต่างย่อย เปิดจากปุ่มใน **Paradise Hub**
 
 วิธีใช้
 
 1. เลือกออบเจกต์ที่มี `GallerySlideshow` ใน Hierarchy (เลือกหลายอันพร้อมกันได้)
-2. เปิด **Paradise > Gallery Setup**
+2. เปิด **Paradise > Paradise Hub** แล้วกด **ตั้งค่าแกลเลอรี / เติม URL**
 3. กดปุ่มลัด `Paradise` / `Partner แนวตั้ง` / `Partner แนวนอน` หรือพิมพ์ URL เอง
 4. กด **เติม URL ให้ที่เลือกอยู่**
 
@@ -243,7 +250,7 @@ gallery/
 
 | หัวข้อในหน้าต่าง | เมนูจริงที่ถูกเรียก |
 |---|---|
-| Gallery | `Paradise/Gallery Setup` |
+| Gallery | ปุ่มในหน้าต่าง (ไม่มีเมนูแยก) |
 | **World Optimizer** | `Tools/Paradise Tool/World Optimizer/…` |
 | Drink Modular | `Tools/Drink Modular UI Creator`, `Tools/Drink Modular/…` |
 | **AutoObjectPool** | `Window/StardustV1/ObjectPoolScript` |
