@@ -34,10 +34,18 @@ public class GallerySlideshow : UdonSharpBehaviour
     [SerializeField] private float fadeTime = 1.5f;
 
     [Header("ปรับจอตามสัดส่วนรูป — กันขอบดำ")]
-    [Tooltip("เปิดไว้ จอจะเปลี่ยนรูปทรงตามรูปแต่ละใบ ปิดแล้วจอคงรูปเดิมและใช้ขอบดำแทน")]
-    [SerializeField] private bool autoFitScreen = true;
+    [Tooltip("ปิดไว้ (แนะนำ) จอคงรูปทรงเดิม แล้วให้เชดเดอร์จัดรูปด้วย Fit Mode\n" +
+             "เปิดเมื่ออยากให้ตัวจอยืด-หดตามสัดส่วนรูปแต่ละใบจริง ๆ")]
+    [SerializeField] private bool autoFitScreen = false;
 
-    [Tooltip("กรอบใหญ่สุดที่จอโตได้ รูปจะถูกย่อให้อยู่ในกรอบนี้โดยคงสัดส่วน")]
+    [Tooltip("ให้สคริปต์คำนวณสัดส่วนจอจริงแล้วส่งให้เชดเดอร์ (แนะนำเปิด)\n" +
+             "ปิดถ้าอยากตั้ง Aspect Mode / Surface Aspect เองบน material")]
+    [SerializeField] private bool driveShaderAspect = true;
+
+    [Tooltip("เปิดไว้ = ใช้ขนาดจอที่จัดวางไว้ใน scene เป็นกรอบ ไม่ต้องกรอกตัวเลขเอง (แนะนำ)")]
+    [SerializeField] private bool maxFromCurrentSize = true;
+
+    [Tooltip("กรอบใหญ่สุดที่จอโตได้ (หน่วยโลก) ใช้เมื่อปิด Max From Current Size")]
     [SerializeField] private Vector2 maxScreenSize = new Vector2(3.2f, 1.8f);
 
     [Header("ให้ผู้เล่นปรับขนาดจอในเกม")]
@@ -65,8 +73,13 @@ public class GallerySlideshow : UdonSharpBehaviour
     private bool  _fading;
     private bool  _finished;
 
-    // ขนาดจอก่อนคูณตัวขยาย — ไล่จาก _baseFrom ไป _baseTo ระหว่างเฟด
+    // ขนาดจอ "ในหน่วยโลก" ก่อนคูณตัวขยาย — ไล่จาก _baseFrom ไป _baseTo ระหว่างเฟด
     private Vector2 _baseFrom, _baseTo, _baseNow;
+
+    // ขนาดเมชใน local space บนระนาบที่ UV กางอยู่
+    // Quad = 1x1 บน XY ส่วน Plane = 10x10 บน XZ เมชอื่นก็เป็นค่าของมันเอง
+    private Vector2 _meshSize = Vector2.one;
+    private bool    _meshIsXZ;
 
     // ตัวคูณขนาดที่ผู้เล่นปรับ sync ให้ทุกคนเห็นเท่ากัน
     [UdonSynced] private float _sizeMul = 1f;
@@ -75,8 +88,16 @@ public class GallerySlideshow : UdonSharpBehaviour
     {
         if (screenTransform == null) screenTransform = transform;
 
+        CacheMeshSize();
+
+        // แปลง localScale ปัจจุบันเป็นขนาดจริงในหน่วยโลก เพื่อให้หน่วยตรงกับ maxScreenSize
         Vector3 s = screenTransform.localScale;
-        _baseNow = _baseFrom = _baseTo = new Vector2(s.x, s.y);
+        float startW = s.x * _meshSize.x;
+        float startH = (_meshIsXZ ? s.z : s.y) * _meshSize.y;
+        _baseNow = _baseFrom = _baseTo = new Vector2(startW, startH);
+
+        // ยึดขนาดที่จัดวางไว้ใน scene เป็นกรอบ จอจะไม่มีทางโตเกินที่ออกแบบไว้
+        if (maxFromCurrentSize) maxScreenSize = new Vector2(startW, startH);
 
         _duration   = fallbackDuration;
         _textures   = new Texture2D[imageUrls.Length];
@@ -230,14 +251,54 @@ public class GallerySlideshow : UdonSharpBehaviour
         return new Vector2(maxScreenSize.y * a, maxScreenSize.y);
     }
 
+    /// อ่านขนาดเมชจริง ไม่งั้นถ้าไม่ใช่ Quad 1x1 สเกลจะเพี้ยนมหาศาล
+    private void CacheMeshSize()
+    {
+        _meshSize = Vector2.one;
+        _meshIsXZ = false;
+
+        MeshFilter mf = screenTransform.GetComponent<MeshFilter>();
+        if (mf == null || mf.sharedMesh == null) return;
+
+        Vector3 b = mf.sharedMesh.bounds.size;
+
+        // เมชแบนบน XZ (เช่น Plane) จะมีความหนาแกน Y เกือบศูนย์
+        if (b.y < 0.0001f && b.z > 0.0001f)
+        {
+            _meshIsXZ = true;
+            _meshSize = new Vector2(b.x, b.z);
+        }
+        else
+        {
+            _meshSize = new Vector2(b.x, b.y);
+        }
+
+        if (_meshSize.x < 0.00001f) _meshSize.x = 1f;
+        if (_meshSize.y < 0.00001f) _meshSize.y = 1f;
+    }
+
     private void ApplyScreenSize()
     {
         if (screenTransform == null) return;
 
+        float wantW = _baseNow.x * _sizeMul;   // ขนาดที่ต้องการในหน่วยโลก
+        float wantH = _baseNow.y * _sizeMul;
+
+        // แปลงกลับเป็น localScale โดยหารด้วยขนาดเมช
+        float sx = wantW / _meshSize.x;
+        float sy = wantH / _meshSize.y;
+
         Vector3 s = screenTransform.localScale;
-        screenTransform.localScale = new Vector3(_baseNow.x * _sizeMul,
-                                                 _baseNow.y * _sizeMul,
-                                                 s.z);
+        if (_meshIsXZ) screenTransform.localScale = new Vector3(sx, s.y, sy);
+        else           screenTransform.localScale = new Vector3(sx, sy, s.z);
+
+        // บอกสัดส่วนจริงให้เชดเดอร์ตรง ๆ ดีกว่าปล่อยให้มันเดาจากสเกล
+        // (ปิดได้ถ้าอยากคุม Aspect Mode เองบน material)
+        if (driveShaderAspect && targetMat != null)
+        {
+            targetMat.SetFloat("_AspectMode", 2f);   // Manual
+            targetMat.SetFloat("_SurfaceAspect", (wantH > 0.0001f) ? (wantW / wantH) : 1f);
+        }
     }
 
     // เรียกจากปุ่ม UI ในเวิลด์ได้เลย (SendCustomEvent)

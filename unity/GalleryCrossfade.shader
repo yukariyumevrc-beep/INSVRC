@@ -1,8 +1,7 @@
 // เชดเดอร์สำหรับจอสไลด์โชว์
 // - เฟดข้ามระหว่างสองรูปด้วย _Blend (0 = TexA, 1 = TexB)
-// - ย่อรูปให้พอดีจอแบบไม่ยืด (contain fit) ส่วนที่เหลือเป็นสีดำ
-//   จึงผสมรูปแนวตั้งกับแนวนอนในชุดเดียวกันได้
-// - คำนวณสัดส่วนจอเองจาก Scale ของออบเจกต์ ไม่ต้องกรอกมือ
+// - จัดรูปให้เข้ากับจอได้ 3 แบบผ่าน _FitMode โดยไม่ต้องแตะ transform
+// - คำนวณสัดส่วนจอเองจาก Scale ของออบเจกต์ หรือรับค่าตรง ๆ จากสคริปต์
 Shader "Paradise/GalleryCrossFade"
 {
     Properties
@@ -10,6 +9,12 @@ Shader "Paradise/GalleryCrossFade"
         _TexA   ("Texture A", 2D) = "black" {}
         _TexB   ("Texture B", 2D) = "black" {}
         _Blend  ("Blend A to B", Range(0, 1)) = 0
+
+        // Contain= เห็นรูปครบทั้งใบ มีขอบดำ  <- ค่าเริ่มต้น
+        // Cover  = เต็มจอ ไม่มีขอบดำ แต่ส่วนที่ล้นโดนตัด
+        // Stretch= ยืดจนเต็ม รูปเบี้ยว
+        [Enum(Contain,0,Cover,1,Stretch,2)]
+        _FitMode ("Fit Mode", Float) = 0
 
         [Enum(AutoQuad,0,AutoPlane,1,Manual,2)]
         _AspectMode ("Aspect Mode", Float) = 0
@@ -42,6 +47,7 @@ Shader "Paradise/GalleryCrossFade"
             sampler2D _TexA; float4 _TexA_TexelSize;
             sampler2D _TexB; float4 _TexB_TexelSize;
             float _Blend;
+            float _FitMode;
             float _AspectMode;
             float _SurfaceAspect;
             float _Brightness;
@@ -79,18 +85,32 @@ Shader "Paradise/GalleryCrossFade"
             // texel.zw = (กว้าง, สูง) ของเท็กซ์เจอร์ Unity ใส่ให้อัตโนมัติ
             float3 SampleFit(sampler2D tex, float4 texel, float2 uv, float surf)
             {
+                // Stretch: ยืดตรง ๆ ไม่ต้องคิดอะไร
+                if (_FitMode > 1.5) return tex2D(tex, uv).rgb;
+
                 float texAspect = texel.z / max(texel.w, 1.0);
                 surf = max(surf, 0.0001);
 
                 float2 p = uv - 0.5;
-                if (texAspect > surf) p.y *= texAspect / surf;   // รูปแบนกว่าจอ -> คาดดำบน/ล่าง
-                else                  p.x *= surf / texAspect;   // รูปสูงกว่าจอ -> คาดดำซ้าย/ขวา
+
+                if (_FitMode < 0.5)
+                {
+                    // Contain: ย่อรูปให้อยู่ในจอทั้งใบ ที่เหลือเป็นขอบดำ
+                    if (texAspect > surf) p.y *= texAspect / surf;
+                    else                  p.x *= surf / texAspect;
+                    p += 0.5;
+
+                    float inside = step(0.0, p.x) * step(p.x, 1.0)
+                                 * step(0.0, p.y) * step(p.y, 1.0);
+                    return tex2D(tex, saturate(p)).rgb * inside;
+                }
+
+                // Cover: ขยายรูปจนคลุมทั้งจอ ส่วนที่ล้นออกไปโดนตัด ไม่มีขอบดำ
+                if (texAspect > surf) p.x *= surf / texAspect;   // รูปแบนกว่าจอ -> ตัดซ้าย/ขวา
+                else                  p.y *= texAspect / surf;   // รูปสูงกว่าจอ -> ตัดบน/ล่าง
                 p += 0.5;
 
-                float inside = step(0.0, p.x) * step(p.x, 1.0)
-                             * step(0.0, p.y) * step(p.y, 1.0);
-
-                return tex2D(tex, saturate(p)).rgb * inside;
+                return tex2D(tex, saturate(p)).rgb;
             }
 
             fixed4 frag(v2f i) : SV_Target
