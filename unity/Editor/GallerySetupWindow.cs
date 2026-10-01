@@ -23,7 +23,7 @@ public class GallerySetupWindow : EditorWindow
     private string _prefabDir = "Assets/whitelistsystem/URLGallery/Prefab/Partner";
     private Vector2 _scroll;
 
-    [MenuItem("Paradise/Gallery Setup")]
+    [MenuItem("Paradise/Gallery Setup", false, 1)]
     public static void Open()
     {
         GallerySetupWindow w = GetWindow<GallerySetupWindow>(false, "Gallery Setup", true);

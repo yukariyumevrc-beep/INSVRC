@@ -234,3 +234,42 @@ gallery/
 
 > ไฟล์อยู่ในโฟลเดอร์ชื่อ `Editor` จึงไม่ถูกรวมเข้าเวิลด์ตอน build
 > และไม่กระทบขนาดหรือประสิทธิภาพของเวิลด์เลย
+
+---
+
+## Paradise Hub — เครื่องมือรวมที่เดียว
+
+เมนู **Paradise > Paradise Hub** รวมปุ่มของเครื่องมือที่ใช้ประจำไว้หน้าต่างเดียว
+
+| หัวข้อในหน้าต่าง | เมนูจริงที่ถูกเรียก |
+|---|---|
+| Gallery | `Paradise/Gallery Setup` |
+| **World Optimizer** | `Tools/Paradise Tool/World Optimizer/…` |
+| Drink Modular | `Tools/Drink Modular UI Creator`, `Tools/Drink Modular/…` |
+| **AutoObjectPool** | `Window/StardustV1/ObjectPoolScript` |
+
+ชื่อที่แสดงในหน้าต่างตั้งได้อิสระจากชื่อเมนูจริง — `Paradise Tool` แสดงเป็น
+**World Optimizer** และ `StardustV1` แสดงเป็น **AutoObjectPool** ตามที่ต้องการ
+
+### ทำไมถึงเรียกเมนู ไม่ย้ายโค้ด
+
+`Drink Modular`, `World Optimizer` และ `ObjectPoolAuto` เป็นเครื่องมือแยกของมันเอง
+ถ้าไปแก้ `[MenuItem]` ในไฟล์พวกนั้นโดยตรง พออัปเดตเครื่องมือทีหนึ่งก็หายทุกที
+Hub เลยเรียกผ่าน `EditorApplication.ExecuteMenuItem` แทน — ไม่แตะโค้ดใคร
+ถ้าวันหนึ่งเครื่องมือไหนเปลี่ยนชื่อเมนู ปุ่มจะขึ้นเตือนว่าหาไม่เจอแทนที่จะเงียบ
+
+ผลข้างเคียง: **เมนูเดิมของแต่ละตัวยังอยู่ที่เดิม** ซ่อนไม่ได้ถ้าไม่แก้ไฟล์ของเขา
+
+### เพิ่มเครื่องมือใหม่เข้า Hub
+
+เพิ่มบรรทัดเดียวใน `ParadiseHubWindow.cs`
+
+```csharp
+MenuButton("ชื่อที่อยากให้แสดง", "พาธ/เมนู/จริง");
+```
+
+หาพาธเมนูจริงได้ด้วยการ grep ในโปรเจกต์
+
+```bash
+grep -rn --include=*.cs -oE 'MenuItem\s*\(\s*"[^"]+"' Assets/
+```
