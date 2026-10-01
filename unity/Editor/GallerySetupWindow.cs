@@ -17,10 +17,12 @@ public class GallerySetupWindow : EditorWindow
     // ชื่อที่แสดง / โฟลเดอร์ย่อยใต้ gallery/
     private static readonly string[] Shortcuts = new string[]
     {
-        "Paradise ตั้ง", "Paradise/paradise_vertical",
-        "Paradise นอน",  "Paradise/paradise_wide",
-        "Partner ตั้ง",  "Partner/partner_vertical",
-        "Partner นอน",   "Partner/partner_wide",
+        "Paradise ตั้ง",  "Paradise/paradise_vertical",
+        "Paradise นอน",   "Paradise/paradise_wide",
+        "GoldenAge ตั้ง", "GoldenAge/goldenage_vertical",
+        "GoldenAge นอน",  "GoldenAge/goldenage_wide",
+        "Partner ตั้ง",   "Partner/partner_vertical",
+        "Partner นอน",    "Partner/partner_wide",
     };
 
     private string _galleryUrl = DefaultBase + "Paradise/paradise_vertical/";
@@ -55,20 +57,31 @@ public class GallerySetupWindow : EditorWindow
         EditorGUILayout.Space();
         _galleryUrl = EditorGUILayout.TextField("Gallery URL", _galleryUrl);
 
-        EditorGUILayout.BeginHorizontal();
-        for (int i = 0; i < Shortcuts.Length; i += 2)
-        {
-            GUIStyle style = (i == 0) ? EditorStyles.miniButtonLeft
-                           : (i >= Shortcuts.Length - 2) ? EditorStyles.miniButtonRight
-                           : EditorStyles.miniButtonMid;
+        // แบ่งเป็นแถวละ 3 ปุ่ม ไม่งั้นพอมีหลายแกลเลอรีแล้วชื่อจะถูกบีบจนอ่านไม่ออก
+        const int PerRow = 3;
+        int count = Shortcuts.Length / 2;
 
-            if (GUILayout.Button(new GUIContent(Shortcuts[i], Shortcuts[i + 1]), style))
+        for (int row = 0; row * PerRow < count; row++)
+        {
+            EditorGUILayout.BeginHorizontal();
+            for (int col = 0; col < PerRow; col++)
             {
-                _galleryUrl = DefaultBase + Shortcuts[i + 1] + "/";
-                GUI.FocusControl(null);   // ให้ช่อง URL อัปเดตที่แสดงทันที
+                int idx = row * PerRow + col;
+                if (idx >= count) { GUILayout.Label(GUIContent.none); continue; }
+
+                int i = idx * 2;
+                GUIStyle style = (col == 0) ? EditorStyles.miniButtonLeft
+                               : (col == PerRow - 1) ? EditorStyles.miniButtonRight
+                               : EditorStyles.miniButtonMid;
+
+                if (GUILayout.Button(new GUIContent(Shortcuts[i], Shortcuts[i + 1]), style))
+                {
+                    _galleryUrl = DefaultBase + Shortcuts[i + 1] + "/";
+                    GUI.FocusControl(null);   // ให้ช่อง URL อัปเดตที่แสดงทันที
+                }
             }
+            EditorGUILayout.EndHorizontal();
         }
-        EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.Space();
         _slots      = Mathf.Clamp(EditorGUILayout.IntField("จำนวนช่อง", _slots), 1, 128);
