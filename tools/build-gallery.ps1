@@ -12,7 +12,14 @@ param(
     [string]$Source,                # โฟลเดอร์รูปต้นฉบับ (ดีฟอลต์: _source\ ที่ root ของ repo)
     [double]$Duration = 10.0,       # วินาทีต่อรูป
     [int]$MaxSize     = 2048,       # ด้านยาวสุด - VRChat รับได้สูงสุด 2048
-    [int]$Quality     = 90,         # คุณภาพ JPEG 1-100
+    [int]$Quality     = 90,         # คุณภาพ JPEG 1-100 (ไม่มีผลกับ PNG)
+
+    # jpg = ไฟล์เล็ก เหมาะกับรูปถ่าย (ดีฟอลต์)
+    # png = ไม่สูญเสียคุณภาพ เก็บความโปร่งใสได้ เหมาะกับโลโก้/ข้อความ/pixel art แต่ไฟล์ใหญ่กว่ามาก
+    # หมายเหตุ: เปลี่ยนแล้ว URL จะเปลี่ยนตาม (0.jpg <-> 0.png) ต้องไปแก้ใน Unity ด้วย
+    [ValidateSet("jpg", "png")]
+    [string]$Format   = "jpg",
+
     [switch]$NoLoop
 )
 
@@ -41,8 +48,8 @@ if ($files.Count -eq 0) {
     return
 }
 
-# ล้าง output เก่า กันรูปที่ลบออกแล้วค้างอยู่
-Get-ChildItem -Path $outDir -Filter *.jpg | Remove-Item -Force
+# ล้าง output เก่า กันรูปที่ลบออกแล้วค้างอยู่ (ล้างทั้งสองนามสกุล เผื่อสลับ -Format)
+Get-ChildItem -Path $outDir -Include *.jpg, *.png -File -Recurse | Remove-Item -Force
 
 $codec     = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() |
              Where-Object { $_.MimeType -eq "image/jpeg" }
@@ -70,17 +77,25 @@ foreach ($f in $files) {
         $w = [int][Math]::Round($img.Width  * $scale)
         $h = [int][Math]::Round($img.Height * $scale)
 
-        $bmp = New-Object System.Drawing.Bitmap($w, $h)
+        $bmp = New-Object System.Drawing.Bitmap($w, $h, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
         $g   = [System.Drawing.Graphics]::FromImage($bmp)
         $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
         $g.PixelOffsetMode   = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
         $g.SmoothingMode     = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-        $g.Clear([System.Drawing.Color]::Black)   # รองพื้น เผื่อต้นฉบับมี alpha
+
+        # JPEG ไม่มี alpha ต้องรองพื้นดำก่อน ไม่งั้นส่วนโปร่งใสจะเพี้ยน
+        # PNG เก็บ alpha ได้ จึงปล่อยพื้นโปร่งไว้
+        if ($Format -eq "jpg") { $g.Clear([System.Drawing.Color]::Black) }
+
         $g.DrawImage($img, 0, 0, $w, $h)
 
-        $name = "$n.jpg"              # ไล่เลขจาก 0
+        $name = "$n.$Format"          # ไล่เลขจาก 0
         $dest = Join-Path $outDir $name
-        $bmp.Save($dest, $codec, $encParams)
+        if ($Format -eq "png") {
+            $bmp.Save($dest, [System.Drawing.Imaging.ImageFormat]::Png)
+        } else {
+            $bmp.Save($dest, $codec, $encParams)
+        }
 
         $kb    = [int]((Get-Item $dest).Length / 1KB)
         $vram += $w * $h * 4 / 1MB
@@ -104,7 +119,7 @@ $durStr  = $Duration.ToString("0.0##", [System.Globalization.CultureInfo]::Invar
 $json    = "{`n  `"count`": $n,`n  `"duration`": $durStr,`n  `"loop`": $loopStr`n}`n"
 [System.IO.File]::WriteAllText((Join-Path $albDir "config.json"), $json, (New-Object System.Text.UTF8Encoding $false))
 
-$totalKb = [int](((Get-ChildItem $outDir -Filter *.jpg | Measure-Object Length -Sum).Sum) / 1KB)
+$totalKb = [int](((Get-ChildItem $outDir -Filter "*.$Format" | Measure-Object Length -Sum).Sum) / 1KB)
 Write-Host ""
 Write-Host "เสร็จแล้ว: $n รูป (รวม $totalKb KB) -> $Album\images\" -ForegroundColor Green
 Write-Host ("VRAM ที่จะกินใน VRChat ประมาณ {0} MB" -f [int]$vram) -ForegroundColor DarkGray
