@@ -47,9 +47,20 @@
 |---|---|
 | Config Url | `https://yukariyumevrc-beep.github.io/INSVRC/Paradise/paradise_central_control/gallery/config.json` |
 | Image Urls | กด `+` 16 ครั้ง แล้ววาง URL ของรูปทีละช่อง |
-| Target Mat | ลาก material `GalleryScreen` มาใส่ |
+| Screens | ลากจอทุกจอมาใส่ (เว้นว่าง = ใช้ Mesh Renderer ของตัวเอง) |
 | Fade Time | `1.5` |
+| Drive Shader Aspect | ติ๊กไว้ |
 | Fallback Duration | `10` |
+
+### จอหลายจอ ใช้ script ตัวเดียว
+
+กด `+` ที่ `Screens` แล้วลากจอทุกจอมาใส่ — **ไม่ต้องก๊อป script ไปแปะทุกจอ**
+
+ทุกจอฉายภาพเดียวกันพร้อมกัน และโหลดรูปแค่ชุดเดียว ถ้าแยก script จะเสีย
+quota 5 วินาทีต่อรูปซ้ำทุกตัว ทำให้กว่าภาพจะขึ้นครบนานขึ้นเป็นเท่าตัว
+
+แต่ละจอมีสัดส่วนของตัวเองได้ แม้ใช้ material ใบเดียวกัน เพราะส่งค่าผ่าน
+`MaterialPropertyBlock` ไม่ได้ไปแก้ material asset
 
 URL ทั้งหมดก๊อปได้จากหน้า
 `https://yukariyumevrc-beep.github.io/INSVRC/Paradise/paradise_central_control/gallery/`

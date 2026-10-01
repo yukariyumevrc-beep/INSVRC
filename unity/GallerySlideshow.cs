@@ -7,12 +7,14 @@ using VRC.SDKBase;
 using VRC.Udon.Common.Interfaces;
 
 /// <summary>
-/// สไลด์โชว์ที่ดึงรูปจาก GitHub Pages มาแสดงบนวัสดุ (material)
+/// สไลด์โชว์ที่ดึงรูปจาก GitHub Pages มาแสดงบนจอหลายจอพร้อมกัน
 /// อ่าน config.json เพื่อเอา count / duration / loop แล้วค่อยไล่โหลดรูปทีละใบ
 ///
-/// สคริปต์ไม่แตะ transform ของจอเลย การจัดรูปให้เข้ากับจอเป็นหน้าที่ของ
-/// เชดเดอร์ Paradise/GalleryCrossFade ผ่านช่อง Fit Mode บน material
+/// ใช้ script ตัวเดียวคุมได้หลายจอ — ลากจอทั้งหมดใส่ช่อง Screens
+/// รูปโหลดชุดเดียวแล้วส่งให้ทุกจอผ่าน MaterialPropertyBlock
+/// แต่ละจอจึงมีสัดส่วนของตัวเองได้ ทั้งที่ใช้ material ใบเดียวกัน
 ///
+/// สคริปต์ไม่แตะ transform ของจอเลย การจัดรูปเป็นหน้าที่ของ Fit Mode บน material
 /// หมายเหตุ: แต่ละคนในเวิลด์โหลดเองแยกกัน ภาพที่เห็นจึงอาจไม่ตรงกัน
 /// </summary>
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
@@ -22,20 +24,18 @@ public class GallerySlideshow : UdonSharpBehaviour
     [Tooltip(".../gallery/config.json")]
     [SerializeField] private VRCUrl configUrl;
 
-    [Tooltip(".../gallery/images/1.png, 2.png, ... เรียงตามลำดับ ช่องที่ไม่ใช้เว้นว่างได้")]
+    [Tooltip(".../gallery/images/0.png, 1.png, ... เรียงตามลำดับ ช่องที่ไม่ใช้เว้นว่างได้")]
     [SerializeField] private VRCUrl[] imageUrls;
 
     [Header("จอแสดงผล")]
-    [Tooltip("material ที่ใช้เชดเดอร์ Paradise/GalleryCrossFade")]
-    [SerializeField] private Material targetMat;
-
-    [Tooltip("Transform ของจอ เว้นว่างไว้จะใช้ตัวเอง — ใช้แค่อ่านสัดส่วน ไม่ได้ขยับอะไร")]
-    [SerializeField] private Transform screenTransform;
+    [Tooltip("ลากจอทุกจอมาใส่ได้เลย ทุกจอจะฉายภาพเดียวกันพร้อมกัน\n" +
+             "เว้นว่างไว้ = ใช้ Mesh Renderer ของตัวเอง")]
+    [SerializeField] private MeshRenderer[] screens;
 
     [Tooltip("ระยะเวลาเฟดข้ามภาพ (วินาที)")]
     [SerializeField] private float fadeTime = 1.5f;
 
-    [Tooltip("ให้สคริปต์วัดสัดส่วนจอจริงแล้วส่งให้เชดเดอร์ (แนะนำเปิด)\n" +
+    [Tooltip("วัดสัดส่วนของแต่ละจอแล้วส่งให้เชดเดอร์ (แนะนำเปิด)\n" +
              "ปิดถ้าอยากตั้ง Aspect Mode / Surface Aspect เองบน material")]
     [SerializeField] private bool driveShaderAspect = true;
 
@@ -46,28 +46,36 @@ public class GallerySlideshow : UdonSharpBehaviour
     private VRCImageDownloader _downloader;
 
     private Texture2D[] _textures;
-    private int   _count;      // จำนวนรูปที่ config.json บอก
-    private int   _fetched;    // ยิง request ไปแล้วกี่ใบ
-    private int   _ready;      // โหลดสำเร็จแล้วกี่ใบ
+    private float[]     _aspects;   // สัดส่วนของรูปแต่ละใบ กันพึ่ง _TexelSize
+    private int   _count;           // จำนวนรูปที่ config.json บอก
+    private int   _fetched;         // ยิง request ไปแล้วกี่ใบ
+    private int   _ready;           // โหลดสำเร็จแล้วกี่ใบ
     private float _duration;
     private bool  _loop = true;
 
-    private int   _cur = -1;   // index ที่กำลังแสดง
+    private int   _cur = -1;        // index ที่กำลังแสดง
     private int   _next;
     private float _timer;
     private bool  _fading;
     private bool  _finished;
 
+    private MaterialPropertyBlock _mpb;
+    private float[] _screenAspect;  // สัดส่วนของแต่ละจอ วัดครั้งเดียวตอน Start
+
+    // สถานะที่จะส่งให้ทุกจอ
+    private Texture2D _texA, _texB;
+    private float     _aspA, _aspB, _blend;
+
     void Start()
     {
-        if (screenTransform == null) screenTransform = transform;
-
         _duration   = fallbackDuration;
         _textures   = new Texture2D[imageUrls.Length];
+        _aspects    = new float[imageUrls.Length];
         _downloader = new VRCImageDownloader();
+        _mpb        = new MaterialPropertyBlock();
 
-        if (targetMat != null) targetMat.SetFloat("_Blend", 0f);
-        PushAspectToShader();
+        SetupScreens();
+        PushToScreens();
 
         if (HasUrl(configUrl))
         {
@@ -86,16 +94,33 @@ public class GallerySlideshow : UdonSharpBehaviour
         if (_downloader != null) _downloader.Dispose();
     }
 
-    /// วัดสัดส่วนจริงของจอจากขนาดเมช x สเกลจริง แล้วบอกเชดเดอร์ตรง ๆ
-    /// ดีกว่าให้เชดเดอร์เดาเอง เพราะเมชไม่จำเป็นต้องเป็น Quad 1x1
-    private void PushAspectToShader()
+    // ---------- จอ ----------
+
+    private void SetupScreens()
     {
-        if (!driveShaderAspect || targetMat == null) return;
+        // ไม่ได้ลากจอมาใส่ ก็ใช้ renderer ของตัวเอง
+        if (screens == null || screens.Length == 0)
+        {
+            MeshRenderer self = GetComponent<MeshRenderer>();
+            if (self != null) screens = new MeshRenderer[] { self };
+            else              screens = new MeshRenderer[0];
+        }
 
-        Vector2 mesh   = Vector2.one;
-        bool    isXZ   = false;
+        _screenAspect = new float[screens.Length];
+        for (int i = 0; i < screens.Length; i++)
+        {
+            _screenAspect[i] = (screens[i] != null) ? MeasureAspect(screens[i].transform) : 1f;
+        }
+    }
 
-        MeshFilter mf = screenTransform.GetComponent<MeshFilter>();
+    /// วัดสัดส่วนจริงของจอจากขนาดเมช x สเกลจริง
+    /// ดีกว่าให้เชดเดอร์เดาเอง เพราะเมชไม่จำเป็นต้องเป็น Quad 1x1
+    private float MeasureAspect(Transform t)
+    {
+        Vector2 mesh = Vector2.one;
+        bool    isXZ = false;
+
+        MeshFilter mf = t.GetComponent<MeshFilter>();
         if (mf != null && mf.sharedMesh != null)
         {
             Vector3 b = mf.sharedMesh.bounds.size;
@@ -108,12 +133,40 @@ public class GallerySlideshow : UdonSharpBehaviour
             if (mesh.y < 0.00001f) mesh.y = 1f;
         }
 
-        Vector3 sc = screenTransform.lossyScale;
+        Vector3 sc = t.lossyScale;
         float w = sc.x * mesh.x;
         float h = (isXZ ? sc.z : sc.y) * mesh.y;
 
-        targetMat.SetFloat("_AspectMode", 2f);   // Manual
-        targetMat.SetFloat("_SurfaceAspect", (h > 0.0001f) ? (w / h) : 1f);
+        return (h > 0.0001f) ? (w / h) : 1f;
+    }
+
+    /// ส่งภาพและค่าต่าง ๆ ให้ทุกจอ ใช้ MaterialPropertyBlock จึงไม่ไปแก้ material asset
+    private void PushToScreens()
+    {
+        if (screens == null) return;
+
+        for (int i = 0; i < screens.Length; i++)
+        {
+            MeshRenderer r = screens[i];
+            if (r == null) continue;
+
+            r.GetPropertyBlock(_mpb);
+
+            if (_texA != null) _mpb.SetTexture("_TexA", _texA);
+            if (_texB != null) _mpb.SetTexture("_TexB", _texB);
+
+            _mpb.SetFloat("_TexAAspect", _aspA);
+            _mpb.SetFloat("_TexBAspect", _aspB);
+            _mpb.SetFloat("_Blend", _blend);
+
+            if (driveShaderAspect)
+            {
+                _mpb.SetFloat("_AspectMode", 2f);   // Manual
+                _mpb.SetFloat("_SurfaceAspect", _screenAspect[i]);
+            }
+
+            r.SetPropertyBlock(_mpb);
+        }
     }
 
     // ---------- config.json ----------
@@ -198,7 +251,10 @@ public class GallerySlideshow : UdonSharpBehaviour
     {
         if (_ready < _textures.Length)
         {
-            _textures[_ready] = result.Result;
+            Texture2D tex = result.Result;
+            _textures[_ready] = tex;
+            _aspects[_ready]  = (tex != null && tex.height > 0)
+                              ? ((float)tex.width / (float)tex.height) : 1f;
             _ready++;
         }
 
@@ -222,7 +278,7 @@ public class GallerySlideshow : UdonSharpBehaviour
 
         if (_ready == _count)
         {
-            Debug.Log("[Gallery] โหลดครบ " + _ready + " ใบ");
+            Debug.Log("[Gallery] โหลดครบ " + _ready + " ใบ ฉายบน " + screens.Length + " จอ");
         }
         else
         {
@@ -239,13 +295,15 @@ public class GallerySlideshow : UdonSharpBehaviour
         _timer  = 0f;
         _fading = false;
 
-        targetMat.SetTexture("_TexA", _textures[0]);
-        targetMat.SetFloat("_Blend", 0f);
+        _texA  = _textures[0];
+        _aspA  = _aspects[0];
+        _blend = 0f;
+        PushToScreens();
     }
 
     void Update()
     {
-        if (_cur < 0 || _finished || targetMat == null) return;
+        if (_cur < 0 || _finished) return;
 
         _timer += Time.deltaTime;
 
@@ -269,24 +327,30 @@ public class GallerySlideshow : UdonSharpBehaviour
             // ใบถัดไปยังโหลดไม่เสร็จ ค้างภาพเดิมไว้ก่อน
             if (n >= _ready) { _timer = _duration; return; }
 
-            _next = n;
-            targetMat.SetTexture("_TexB", _textures[_next]);
+            _next  = n;
+            _texB  = _textures[_next];
+            _aspB  = _aspects[_next];
+            _blend = 0f;
+            PushToScreens();
+
             _fading = true;
             _timer  = 0f;
             return;
         }
 
-        float k = (fadeTime <= 0f) ? 1f : Mathf.Clamp01(_timer / fadeTime);
-        targetMat.SetFloat("_Blend", k);
+        _blend = (fadeTime <= 0f) ? 1f : Mathf.Clamp01(_timer / fadeTime);
 
-        if (k >= 1f)
+        if (_blend >= 1f)
         {
-            _cur = _next;
-            targetMat.SetTexture("_TexA", _textures[_cur]);
-            targetMat.SetFloat("_Blend", 0f);
+            _cur   = _next;
+            _texA  = _textures[_cur];
+            _aspA  = _aspects[_cur];
+            _blend = 0f;
             _fading = false;
             _timer  = 0f;
         }
+
+        PushToScreens();
     }
 
     private bool HasUrl(VRCUrl u)

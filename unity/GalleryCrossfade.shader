@@ -1,7 +1,8 @@
 // เชดเดอร์สำหรับจอสไลด์โชว์
 // - เฟดข้ามระหว่างสองรูปด้วย _Blend (0 = TexA, 1 = TexB)
 // - จัดรูปให้เข้ากับจอได้ 3 แบบผ่าน _FitMode โดยไม่ต้องแตะ transform
-// - คำนวณสัดส่วนจอเองจาก Scale ของออบเจกต์ หรือรับค่าตรง ๆ จากสคริปต์
+// - ทุกค่าตั้งผ่าน MaterialPropertyBlock ได้ จอหลายจอจึงใช้ material ใบเดียวกัน
+//   แต่มีสัดส่วนและภาพของตัวเองได้
 Shader "Paradise/GalleryCrossFade"
 {
     Properties
@@ -20,7 +21,13 @@ Shader "Paradise/GalleryCrossFade"
         _AspectMode ("Aspect Mode", Float) = 0
 
         _SurfaceAspect ("Surface Aspect (ใช้เมื่อเลือก Manual)", Float) = 1.7778
-        _Brightness    ("Brightness", Range(0, 2)) = 1
+
+        // สัดส่วนรูป สคริปต์ส่งมาให้ 0 = ให้เชดเดอร์อ่านจากขนาดเท็กซ์เจอร์เอง
+        // จำเป็นเวลาใช้ MaterialPropertyBlock เพราะ _TexelSize อาจไม่อัปเดตตาม
+        _TexAAspect ("Tex A Aspect (0 = auto)", Float) = 0
+        _TexBAspect ("Tex B Aspect (0 = auto)", Float) = 0
+
+        _Brightness ("Brightness", Range(0, 2)) = 1
     }
 
     SubShader
@@ -50,6 +57,8 @@ Shader "Paradise/GalleryCrossFade"
             float _FitMode;
             float _AspectMode;
             float _SurfaceAspect;
+            float _TexAAspect;
+            float _TexBAspect;
             float _Brightness;
 
             // ความยาวแกนของออบเจกต์ในพิกัดโลก = สเกลจริงหลังคิด parent ทั้งสาย
@@ -82,13 +91,13 @@ Shader "Paradise/GalleryCrossFade"
                 return o;
             }
 
-            // texel.zw = (กว้าง, สูง) ของเท็กซ์เจอร์ Unity ใส่ให้อัตโนมัติ
-            float3 SampleFit(sampler2D tex, float4 texel, float2 uv, float surf)
+            float3 SampleFit(sampler2D tex, float4 texel, float given, float2 uv, float surf)
             {
                 // Stretch: ยืดตรง ๆ ไม่ต้องคิดอะไร
                 if (_FitMode > 1.5) return tex2D(tex, uv).rgb;
 
-                float texAspect = texel.z / max(texel.w, 1.0);
+                // ใช้ค่าที่สคริปต์ส่งมาก่อน ไม่มีค่อยอ่านจาก texel.zw = (กว้าง, สูง)
+                float texAspect = (given > 0.0001) ? given : (texel.z / max(texel.w, 1.0));
                 surf = max(surf, 0.0001);
 
                 float2 p = uv - 0.5;
@@ -115,8 +124,8 @@ Shader "Paradise/GalleryCrossFade"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float3 a = SampleFit(_TexA, _TexA_TexelSize, i.uv, i.surf);
-                float3 b = SampleFit(_TexB, _TexB_TexelSize, i.uv, i.surf);
+                float3 a = SampleFit(_TexA, _TexA_TexelSize, _TexAAspect, i.uv, i.surf);
+                float3 b = SampleFit(_TexB, _TexB_TexelSize, _TexBAspect, i.uv, i.surf);
                 float3 c = lerp(a, b, saturate(_Blend)) * _Brightness;
                 return fixed4(c, 1.0);
             }
