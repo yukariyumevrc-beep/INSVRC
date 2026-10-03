@@ -22,6 +22,7 @@ public class GallerySetupWindow : EditorWindow
         "Paradise นอน",   GalleryDir + "Paradise/paradise_wide",
         "GoldenAge ตั้ง", "Paradise/golden-age/Gallery/goldenage_vertical",
         "GoldenAge นอน",  "Paradise/golden-age/Gallery/goldenage_wide",
+        "YakiBar ตั้ง",   "Paradise/Yaki/Gallery/yakibar_vertical",
         "Partner ตั้ง",   GalleryDir + "Partner/partner_vertical",
         "Partner นอน",    GalleryDir + "Partner/partner_wide",
     };

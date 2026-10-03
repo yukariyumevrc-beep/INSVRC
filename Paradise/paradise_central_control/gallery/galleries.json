@@ -5,6 +5,7 @@
     { "name": "Paradise — แนวนอน",   "path": "Paradise/paradise_wide" },
     { "name": "Golden Age — แนวตั้ง", "path": "../../golden-age/Gallery/goldenage_vertical" },
     { "name": "Golden Age — แนวนอน", "path": "../../golden-age/Gallery/goldenage_wide" },
+    { "name": "Yaki Bar — แนวตั้ง",   "path": "../../Yaki/Gallery/yakibar_vertical" },
     { "name": "Partner — แนวตั้ง",    "path": "Partner/partner_vertical" },
     { "name": "Partner — แนวนอน",    "path": "Partner/partner_wide" }
   ]
