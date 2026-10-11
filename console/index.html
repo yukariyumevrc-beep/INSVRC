@@ -329,6 +329,7 @@
 
   <p class="note" style="text-align:center">
     This page is public, but it does nothing without your own token. Source file: <code>sources/global_blacklist.src</code> ·
+    the published list rebuilds about a minute after each commit, and
     every id is re-read every 3 hours to catch renames.
   </p>
 </div>
@@ -553,7 +554,7 @@
         el("listNote").textContent = "";
         show("listMsg", "err", "Could not read the published list. " + escapeHtml(err.message) +
           (err.blocked
-            ? "<br><br>Since even this read is blocked, nothing on this page can reach GitHub. Tell Claude."
+            ? "<br><br>If even this read is blocked, nothing on this page can reach GitHub at all."
             : ""));
       });
   }
@@ -757,8 +758,8 @@
 
         var hint = "";
         if (err.blocked) {
-          hint = "<br><br>Check your connection, or any extension blocking requests. " +
-            ";
+          hint = "<br><br>Check your connection, and anything that might block requests to api.github.com " +
+            "such as an ad blocker or a company network. No token will fix this one.";
         } else if (err.status === 404) {
           hint = "<br><br>Usually the <b>Resource owner</b> on the token: it has to be " +
             "<b>" + OWNER + "</b>, and that account has to be the one you were signed in as when you made it.";
