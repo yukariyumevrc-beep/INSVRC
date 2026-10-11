@@ -1,5 +1,5 @@
 # NEW GEN BLACKLIST V3
-# generated 2026-10-11 10:28 UTC by build_blacklist.py - do not edit by hand, edit the source file
+# generated 2026-10-11 10:30 UTC by build_blacklist.py - do not edit by hand, edit the source file
 # format: usr_id | DisplayName | note    (any field may be omitted, '#' starts a comment)
 # only DisplayName can be matched in-world: Udon has no access to usr_ ids
 #!count=24
@@ -29,5 +29,6 @@ usr_05fd8100-a219-4dfc-be58-97d92a9e9205 | TaKiKaToJi
 usr_a0103a10-3575-41c6-a50e-8e573e1d7ede | TN ZEXCT
 Wireder
 [immune]
+usr_394faa73-e814-4c44-a1da-1fd35af6bd72 | -- ᴀɪᴍɪ --
 usr_832851e1-4364-4369-b2cb-c0715d40ca64 | Yukari Yume
 usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | 《ＳＡＩＮＴ》
