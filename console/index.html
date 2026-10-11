@@ -305,7 +305,7 @@
 
   <p class="note" style="text-align:center">
     This page is public, but it does nothing without your own token. Source file: <code>sources/global_blacklist.src</code> ·
-    the published list rebuilds about a minute after each commit, and every id is re-read every 3 hours to catch renames.
+    every id is re-read every 3 hours to catch renames.
   </p>
 </div>
 
@@ -684,15 +684,27 @@
     el("connectBtn").disabled = true;
     show("connMsg", "info", "Checking the token…");
 
+    // INSVRC is public, so GET /repos answers even for a token with no access to
+    // it at all. Reading the source file is the check that actually proves the
+    // token carries the Contents permission.
     gh("/repos/" + OWNER + "/" + REPO, { method: "GET" })
       .then(function (repo) {
-        var canWrite = repo.permissions && repo.permissions.push;
+        return gh("/repos/" + OWNER + "/" + REPO + "/contents/" + encodeURI(SRC_PATH) + "?ref=" + BRANCH, { method: "GET" })
+          .then(function () { return repo; });
+      })
+      .then(function (repo) {
+        var canWrite = !!(repo.permissions && repo.permissions.push);
         saveToken(token);
         setConnected(true, repo.full_name);
-        if (canWrite === false) {
-          show("connMsg", "err", "Connected, but this token cannot write to the repo. Give it <b>Contents: Read and write</b>.");
+
+        if (canWrite) {
+          show("connMsg", "ok", "Connected to <b>" + escapeHtml(repo.full_name) +
+            "</b> and able to commit. The token is saved in this browser only.");
         } else {
-          show("connMsg", "ok", "Connected to <b>" + escapeHtml(repo.full_name) + "</b>. The token is saved in this browser only.");
+          show("connMsg", "err",
+            "Connected and able to <b>read</b> the list, but GitHub says this token cannot write. " +
+            "Set <b>Contents</b> to <b>Read and write</b>, not just Read. " +
+            "Adding and removing will fail with a 403 until then.");
         }
       })
       .catch(function (err) {
@@ -701,13 +713,15 @@
 
         var hint = "";
         if (err.blocked) {
-          hint = "<br><br>Copy this message to Claude — the page needs a different route to GitHub, " +
-            "and no token will fix it.";
+          hint = "<br><br>Check your connection, or any extension blocking requests. " +
+            ";
         } else if (err.status === 404) {
           hint = "<br><br>Usually the <b>Resource owner</b> on the token: it has to be " +
             "<b>" + OWNER + "</b>, and that account has to be the one you were signed in as when you made it.";
         } else if (err.status === 403) {
-          hint = "<br><br>Give the token <b>Contents: Read and write</b> on INSVRC.";
+          hint = "<br><br>The token reaches the repo but lacks the permission. On the token's settings page, " +
+            "under <b>Repository permissions</b>, set <b>Contents</b> to <b>Read and write</b>. " +
+            "Repository access alone is not enough — the permission is a separate step further down the form.";
         } else if (err.status === 401) {
           hint = "<br><br>Check for a stray space, or make a fresh token — tokens are shown only once.";
         }
@@ -802,9 +816,14 @@
           '/actions" target="_blank" rel="noopener">watch the run</a>, then press Reload in about a minute.');
       })
       .catch(function (err) {
-        var extra = err.status === 409
-          ? " The file changed while you were editing; press Reload and try again."
-          : "";
+        var extra = "";
+        if (err.status === 409) {
+          extra = " The file changed while you were editing; press Reload and try again.";
+        } else if (err.status === 403) {
+          extra = "<br><br>Set <b>Contents</b> to <b>Read and write</b> on the token, under " +
+            "<b>Repository permissions</b>. Choosing the repository under Repository access is a " +
+            "separate step and does not grant this on its own.";
+        }
         show("addMsg", "err", escapeHtml(err.message) + extra);
         el("addBtn").disabled = false;
       });
