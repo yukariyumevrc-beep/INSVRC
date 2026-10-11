@@ -189,6 +189,17 @@
   .note { font-size: 12.5px; color: var(--fg-faint); line-height: 1.55; }
   .note code, code { font-family: var(--font-data); font-size: 0.92em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 
+  /* ---- segmented switch ---- */
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 2px; gap: 2px; }
+  .seg button {
+    border: none; background: transparent; color: var(--fg-dim);
+    font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  }
+  .seg button:hover:not([aria-pressed="true"]) { color: var(--fg); }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+  .seg button[aria-pressed="true"].immune { color: var(--ok); }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
   details.setup { border-top: 1px solid var(--line-soft); }
   details.setup > summary { padding: 12px 18px; cursor: pointer; font-size: 13px; color: var(--fg-dim); font-weight: 500; }
   details.setup > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -224,10 +235,18 @@
   <!-- ============ ADD ============ -->
   <section class="panel">
     <div class="panel-head">
-      <h2>Add to blacklist</h2>
-      <button class="small ghost" id="clearBtn" type="button">Clear</button>
+      <h2 id="addHeading">Add to blacklist</h2>
+      <div class="row">
+        <span class="seg" role="group" aria-label="Which list to add to">
+          <button type="button" id="segBlacklist" aria-pressed="true">Blacklist</button>
+          <button type="button" id="segImmune" class="immune" aria-pressed="false">Immune</button>
+        </span>
+        <button class="small ghost" id="clearBtn" type="button">Clear</button>
+      </div>
     </div>
     <div class="body">
+      <div class="msg info" id="sectionNote"></div>
+
       <label class="field" for="pasteBox">
         <span>One per line. Profile link, bare <code>usr_</code> id, or a display name. Add a reason after a <code>|</code>.</span>
         <textarea id="pasteBox" spellcheck="false" placeholder="https://vrchat.com/home/user/usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx | crashed the bar"></textarea>
@@ -251,6 +270,11 @@
     <div class="panel-head">
       <h2>Published list</h2>
       <div class="row">
+        <span class="seg" role="group" aria-label="Which entries to show">
+          <button type="button" id="viewAll" aria-pressed="true">All</button>
+          <button type="button" id="viewBlacklist" aria-pressed="false">Blacklist</button>
+          <button type="button" id="viewImmune" class="immune" aria-pressed="false">Immune</button>
+        </span>
         <button class="small ghost" id="refreshNamesBtn" type="button" title="Re-read every profile now instead of waiting for the 3-hourly run">Re-check names now</button>
         <button class="small ghost" id="reloadBtn" type="button">Reload</button>
       </div>
@@ -327,9 +351,16 @@
   var el = function (id) { return document.getElementById(id); };
   var token = "";
   var publishedEntries = [];
+
+  // Section-aware: the same person can legitimately be on the blacklist and in
+  // the immune section, so "already there" has to mean "already in the section
+  // you are adding to", not "anywhere in the file".
   var knownIds = Object.create(null);
   var knownNames = Object.create(null);
   var parsed = [];
+
+  var targetSection = "blacklist";  // which section the paste box adds to
+  var viewSection = "all";          // which section the list below shows
 
   // ---------- storage (may throw in private windows) ----------
   function loadToken() {
@@ -420,12 +451,24 @@
       var state, why;
       var key = (e.id || e.name).toLowerCase();
 
+      var inSection = e.id
+        ? knownIds[e.id] === targetSection
+        : (e.name && knownNames[e.name.toLowerCase()] === targetSection);
+
+      var inOther = !inSection && (e.id
+        ? !!knownIds[e.id]
+        : !!(e.name && knownNames[e.name.toLowerCase()]));
+
       if (e.problem) { state = "bad"; why = e.problem; }
       else if (seen[key]) { state = "dup"; why = "repeated in what you pasted"; }
-      else if (e.id && knownIds[e.id]) { state = "dup"; why = "already on the list"; }
-      else if (!e.id && e.name && knownNames[e.name.toLowerCase()]) { state = "dup"; why = "already on the list by name"; }
-      else if (!e.id) { state = "noid"; why = "no id — a rename defeats this one"; }
-      else { state = "add"; why = ""; }
+      else if (inSection) { state = "dup"; why = "already in " + targetSection; }
+      else if (!e.id) {
+        state = "noid";
+        why = inOther
+          ? "no id, and already in the other section"
+          : "no id — a rename defeats this one";
+      }
+      else { state = "add"; why = inOther ? "currently in the other section" : ""; }
 
       seen[key] = true;
       if (state === "add" || state === "noid") parsed.push(e);
@@ -488,8 +531,8 @@
           if (!e) return;
           e.section = section;
           publishedEntries.push(e);
-          if (e.id) knownIds[e.id] = true;
-          if (e.name) knownNames[e.name.toLowerCase()] = true;
+          if (e.id) knownIds[e.id] = section;
+          if (e.name) knownNames[e.name.toLowerCase()] = section;
         });
 
         var banned = publishedEntries.filter(function (e) { return e.section === "blacklist"; });
@@ -519,6 +562,7 @@
     var q = el("filterBox").value.trim().toLowerCase();
     var rows = publishedEntries
       .filter(function (e) {
+        if (viewSection !== "all" && e.section !== viewSection) return false;
         if (!q) return true;
         return (e.name && e.name.toLowerCase().indexOf(q) >= 0) || (e.id && e.id.toLowerCase().indexOf(q) >= 0);
       })
@@ -731,14 +775,35 @@
       .then(function () { el("connectBtn").disabled = false; });
   }
 
-  // Insert new lines at the end of the blacklist section, above the comment
-  // block that introduces [immune] rather than between it and its heading.
-  function insertionIndex(lines) {
-    var immuneAt = -1;
+  function immuneHeaderIndex(lines) {
     for (var i = 0; i < lines.length; i++) {
       var t = lines[i].trim().toLowerCase();
-      if (t === "[immune]" || t === "[allowlist]" || t === "[whitelist]") { immuneAt = i; break; }
+      if (t === "[immune]" || t === "[allowlist]" || t === "[whitelist]") return i;
     }
+    return -1;
+  }
+
+  /**
+   * Where new lines for a section should go.
+   *
+   * blacklist: end of the blacklist section, which means above the comment block
+   *   that introduces [immune] rather than wedged between it and its heading.
+   * immune: end of the immune section. It is the last section in the file, so
+   *   that is the end of the file, skipping back over trailing blank lines.
+   *
+   * Returns -1 for immune when the file has no [immune] section; the caller
+   * appends one.
+   */
+  function insertionIndexFor(lines, section) {
+    var immuneAt = immuneHeaderIndex(lines);
+
+    if (section === "immune") {
+      if (immuneAt === -1) return -1;
+      var end = lines.length;
+      while (end > immuneAt + 1 && lines[end - 1].trim() === "") end--;
+      return end;
+    }
+
     if (immuneAt === -1) return lines.length;
 
     var at = immuneAt;
@@ -754,8 +819,10 @@
     if (!parsed.length || !token) return;
 
     var toAdd = parsed.slice();
+    var section = targetSection;
     el("addBtn").disabled = true;
-    show("addMsg", "info", "Committing " + toAdd.length + (toAdd.length === 1 ? " entry" : " entries") + "…");
+    show("addMsg", "info", "Committing " + toAdd.length +
+      (toAdd.length === 1 ? " entry" : " entries") + " to " + section + "…");
 
     gh("/repos/" + OWNER + "/" + REPO + "/contents/" + encodeURI(SRC_PATH) + "?ref=" + BRANCH, { method: "GET" })
       .then(function (file) {
@@ -765,35 +832,50 @@
         if (trailingNewline) lines.pop();
 
         // Re-check against the source file itself, not just the published copy:
-        // an entry added a minute ago may not have been rebuilt yet.
+        // an entry added a minute ago may not have been rebuilt yet. Tracked per
+        // section, since being in the other one is not a duplicate.
         var existingIds = Object.create(null);
         var existingNames = Object.create(null);
+        var walkSection = "blacklist";
+
         lines.forEach(function (raw) {
+          var line = raw.trim();
+          if (line.charAt(0) === "[" && line.charAt(line.length - 1) === "]") {
+            var s = line.slice(1, -1).trim().toLowerCase();
+            walkSection = (s === "immune" || s === "allowlist" || s === "whitelist") ? "immune" : "blacklist";
+            return;
+          }
           var e = parseLine(raw);
           if (!e) return;
-          if (e.id) existingIds[e.id] = true;
-          if (e.name) existingNames[e.name.toLowerCase()] = true;
+          if (e.id) existingIds[e.id] = walkSection;
+          if (e.name) existingNames[e.name.toLowerCase()] = walkSection;
         });
 
         var fresh = toAdd.filter(function (e) {
-          if (e.id && existingIds[e.id]) return false;
-          if (!e.id && e.name && existingNames[e.name.toLowerCase()]) return false;
+          if (e.id && existingIds[e.id] === section) return false;
+          if (!e.id && e.name && existingNames[e.name.toLowerCase()] === section) return false;
           return true;
         });
 
         if (!fresh.length) {
-          show("addMsg", "info", "Nothing committed — all of those are already in the source file.");
+          show("addMsg", "info", "Nothing committed — all of those are already in " + section + ".");
           el("addBtn").disabled = false;
           return null;
         }
 
-        var at = insertionIndex(lines);
         var block = fresh.map(formatEntry);
+        var at = insertionIndexFor(lines, section);
+
+        if (at === -1) {
+          // No immune section yet; start one at the end of the file.
+          block = ["", "[immune]"].concat(block);
+          at = lines.length;
+        }
+
         var updated = lines.slice(0, at).concat(block, lines.slice(at)).join("\n") + "\n";
 
-        var summary = fresh.length === 1
-          ? "blacklist: add 1 entry from the console"
-          : "blacklist: add " + fresh.length + " entries from the console";
+        var summary = "blacklist: add " + fresh.length +
+          (fresh.length === 1 ? " entry to " : " entries to ") + section + " from the console";
 
         return gh("/repos/" + OWNER + "/" + REPO + "/contents/" + encodeURI(SRC_PATH), {
           method: "PUT",
@@ -854,6 +936,38 @@
       .then(function () { el("refreshNamesBtn").disabled = false; });
   }
 
+  // ---------- section switches ----------
+  function setTargetSection(section) {
+    targetSection = section;
+
+    el("segBlacklist").setAttribute("aria-pressed", String(section === "blacklist"));
+    el("segImmune").setAttribute("aria-pressed", String(section === "immune"));
+    el("addHeading").textContent = section === "immune" ? "Add to immune" : "Add to blacklist";
+
+    el("sectionNote").innerHTML = section === "immune"
+      ? '<div class="msg ok">Immune: these people can <b>never</b> be blacklisted, even if their name is also on the ' +
+        'blacklist. Immunity always wins. Put yourself and your staff here.</div>'
+      : '<div class="msg info">Blacklist: these people get jailed or silenced in the world. ' +
+        'Anyone also listed as immune is skipped.</div>';
+
+    clearMsg("addMsg");
+    renderPreview();
+  }
+
+  function setViewSection(section) {
+    viewSection = section;
+    el("viewAll").setAttribute("aria-pressed", String(section === "all"));
+    el("viewBlacklist").setAttribute("aria-pressed", String(section === "blacklist"));
+    el("viewImmune").setAttribute("aria-pressed", String(section === "immune"));
+    renderEntries();
+  }
+
+  el("segBlacklist").addEventListener("click", function () { setTargetSection("blacklist"); });
+  el("segImmune").addEventListener("click", function () { setTargetSection("immune"); });
+  el("viewAll").addEventListener("click", function () { setViewSection("all"); });
+  el("viewBlacklist").addEventListener("click", function () { setViewSection("blacklist"); });
+  el("viewImmune").addEventListener("click", function () { setViewSection("immune"); });
+
   // ---------- wiring ----------
   el("pasteBox").addEventListener("input", renderPreview);
   el("filterBox").addEventListener("input", renderEntries);
@@ -878,6 +992,8 @@
   });
 
   // ---------- boot ----------
+  setTargetSection("blacklist");
+  setViewSection("all");
   setConnected(false);
   loadPublished();
 
