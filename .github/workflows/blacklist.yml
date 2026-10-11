@@ -17,10 +17,9 @@
 # rename: the usr_ id never changes, so the next run picks up the new display
 # name and the list repairs itself without you doing anything.
 #
-# SAFETY: --out points at the test folder on purpose. Your live
-# Paradise/paradise_central_control/global_blacklist is NOT touched. Once you
-# have watched this work and the world reads the test list correctly, change the
-# two paths in the "Compile list" step below to the live file.
+# The published list is Paradise/paradise_central_control/global_blacklist.txt.
+# It is generated: never edit it by hand, your change would be overwritten on
+# the next run. Everything you type goes in sources/global_blacklist.src.
 
 name: Build blacklist
 
@@ -75,8 +74,7 @@ jobs:
         run: |
           cd Paradise/paradise_central_control
           ARGS="--src sources/global_blacklist.src \
-                --out test/global_blacklist_v3.txt \
-                --also-write test/global_blacklist_v3 \
+                --out global_blacklist.txt \
                 --cache known_users.json \
                 --resolve \
                 --write-src"
@@ -89,7 +87,7 @@ jobs:
           git config user.email "blacklist-bot@users.noreply.github.com"
           git add -A \
             Paradise/paradise_central_control/sources \
-            Paradise/paradise_central_control/test \
+            Paradise/paradise_central_control/global_blacklist.txt \
             Paradise/paradise_central_control/known_users.json
           if git diff --cached --quiet; then
             echo "nothing changed"

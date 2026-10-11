@@ -337,6 +337,44 @@ def resolve_names(entries, cache, delay, refresh):
 # ---------------------------------------------------------------------------
 
 
+def merge_duplicate_names(entries):
+    """
+    Collapses entries that ended up with the same display name.
+
+    Parsing dedupes on id and on name, but an id has no name yet at that point.
+    So pasting the profile link for somebody already on the list by name gives
+    two entries that only become identical once the name resolves. Keep one,
+    and make sure it is the one carrying the id, since that is the half that
+    survives a rename.
+    """
+    kept_by_key = {}
+    merged = []
+    removed = 0
+
+    for entry in entries:
+        if not entry.name:
+            merged.append(entry)
+            continue
+
+        # Section is part of the key: a blacklist and an immune entry sharing a
+        # name are a conflict to leave visible, not something to silently merge.
+        key = (entry.section, entry.name.lower())
+        existing = kept_by_key.get(key)
+
+        if existing is None:
+            kept_by_key[key] = entry
+            merged.append(entry)
+            continue
+
+        if entry.user_id and not existing.user_id:
+            existing.user_id = entry.user_id
+        if entry.note and not existing.note:
+            existing.note = entry.note
+        removed += 1
+
+    return merged, removed
+
+
 def rewrite_sources(paths, names_by_id):
     """
     Writes resolved names back into the source files, in place.
@@ -653,6 +691,24 @@ def selftest():
         True,
     )
 
+    # A pasted link resolving onto somebody already listed by name must collapse
+    # into one entry that keeps the id.
+    name_only = Entry(name="Griefer")
+    from_link = Entry(user_id="usr_eeeeeeee-0000-0000-0000-000000000000", name="griefer", note="pasted later")
+    unrelated = Entry(name="SomebodyElse")
+    id_only = Entry(user_id="usr_ffffffff-0000-0000-0000-000000000000")
+    same_name_immune = Entry(name="Griefer", section=SECTION_IMMUNE)
+
+    merged_entries, merged_count = merge_duplicate_names(
+        [name_only, from_link, unrelated, id_only, same_name_immune]
+    )
+    check("merge count", merged_count, 1)
+    check("merge keeps one", len(merged_entries), 4)
+    check("merge adopts the id", name_only.user_id, "usr_eeeeeeee-0000-0000-0000-000000000000")
+    check("merge adopts the note", name_only.note, "pasted later")
+    check("merge keeps id-only entries", id_only in merged_entries, True)
+    check("merge does not cross sections", same_name_immune in merged_entries, True)
+
     # In-place source annotation: the pasted-id-becomes-a-name behaviour.
     import tempfile
 
@@ -760,6 +816,10 @@ def main():
     if args.resolve or args.refresh:
         resolved, api_calls = resolve_names(entries, cache, args.delay, args.refresh)
         print("resolved %d name(s) from public profile pages (%d request(s))" % (resolved, api_calls))
+
+    entries, merged = merge_duplicate_names(entries)
+    if merged:
+        print("merged %d entry/entries that resolved onto a name already listed" % merged)
 
     if not args.check:
         save_cache(args.cache, cache)

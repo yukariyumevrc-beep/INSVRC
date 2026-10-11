@@ -1,44 +1,69 @@
 # NEW GEN BLACKLIST V3 - SOURCE list
 #
-# THIS is the file you edit. Edit it right here in GitHub's web editor.
-# The compiled file the world downloads is generated from it; do not edit that.
+# THIS is the only file you edit. Edit it right here in GitHub's web editor.
+# The published list the world downloads is generated from it.
 #
-# Paste whatever you have, one per line. All of these work:
+# TO ADD SOMEONE: paste their profile link on its own line under [blacklist].
+#   https://vrchat.com/home/user/usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx | why, and the date
+# Commit, wait about a minute, and the bot rewrites your line to add their
+# display name, which it reads off their public profile page. No login needed.
 #
-#   https://vrchat.com/home/user/usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9
-#   usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9
-#   SomeDisplayName
-#   usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | SomeDisplayName | why, and the date
+# ALWAYS PASTE THE LINK, NOT JUST A NAME. The usr_ id is the only thing that
+# survives a rename. The bot re-reads every id every 6 hours, so someone who
+# renames to dodge the list gets put back on it by themselves. A name-only line
+# is a line they escape by changing their name.
 #
-# Commit, wait about a minute, and the bot rewrites your line to add the
-# display name it read off the public profile page. No login needed.
-#
-# ALWAYS PASTE THE PROFILE LINK, not just the name. The usr_ id is the only
-# thing that survives a rename: the bot re-checks every id every 6 hours, so a
-# griefer who renames gets put back on the list by themselves. A line with only
-# a name is a line they can escape by changing it.
+# TO REMOVE SOMEONE: delete their line.
 
 [blacklist]
 
-# ---- carried over from the old string list, names only ----
-# No ids on these, so a rename defeats them. Next time one of them shows up,
-# grab the profile link and paste it onto the line.
--VinZen-
-IntrovertNight
-KasugiGamer
+# ---- carried over from Paradise/golden-age/blacklist ----
+# Names only, so a rename defeats these. Next time one of them turns up, grab
+# the profile link and paste it onto their line.
 kawinkhwylek 3270
 KIKIKIKI7397
 kikikiki7397 8390
 KIKIKIKI7397 3d5d
-NANOOHHO
 RossoWhero
+KasugiGamer
+IntrovertNight
 Wireder
+NANOOHHO
+jt207455 0253
+jt207455 e747
+jt207455 421f
+jt207455 650b
+-VinZen-
+ShionRosso
+Lord_Aragon
+ILuvTomboy
+Lemon［X］ziCute
+TN ZEXCT
+POUpou''
+TaKiKaToJi
 
-# ---- new entries go below, with the link and a reason ----
+# ---- added 2026-10-11 from profile links ----
+usr_bcbbb9f6-3b09-4617-b43e-518a1e473270 | kawinkhwylek 3270
+usr_b7fdd154-27b8-4a3c-a392-8e3faa5c62f1 | KIKIKIKI7397
+usr_bc21db1e-51e8-409c-89f0-a8ffe9c88390 | kikikiki7397 8390
+usr_d28d39ca-615a-491c-afcb-bfe298da47ba | NANOOHHO
+usr_7d2de0fa-55cc-42ad-b8a2-fdd8e4d50253 | jt207455 0253
+usr_35ffbed1-3b42-4f41-b6ed-f74e95e5e747 | jt207455 e747
+usr_13b145cf-b5f3-4cc9-91c1-c77b75fa421f | jt207455 421f
+usr_4dd86bae-0a9f-4fca-9d13-ca578b16650b | jt207455 650b
+usr_d451c993-f91e-451e-83e4-35258cae671a | -VinZen-
+usr_8253c08c-d80d-49ad-bc70-c647bc4405ee | ShionRosso
+usr_f4e50087-eacf-45fc-9178-0dbdaabc0129 | Lord_Aragon
+usr_010df9d2-e0ae-4633-91fe-97fe6530609b | ILuvTomboy
+usr_5c9b424d-a65e-4415-86db-c5bb7cb5e6eb | Lemon［X］ziCute
+usr_e2ce60b0-a860-4d38-8fd1-0c10408c9300 | LeMon［X］ziCute 9300
+usr_a0103a10-3575-41c6-a50e-8e573e1d7ede | TN ZEXCT
+usr_dc40475c-ed04-4eda-909c-386377c5e709 | POUpou''
+usr_05fd8100-a219-4dfc-be58-97d92a9e9205 | TaKiKaToJi
+usr_98802568-7285-4fe2-9c88-84b7565baf4d | CHASE ROSIER
+usr_0c767a0a-ff53-403b-a70b-8a6395a08fdf | LukaDotJpeg
 
-
-# Nobody in this section can ever be blacklisted, even if their name also
-# appears above. This is what stops a typo from locking you out of your own
-# world. The id is here so your immunity follows you if you ever rename.
+# Nobody here can ever be blacklisted, even if their name also appears above.
+# This is what stops a mistake from locking you out of your own world.
 [immune]
 usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | 《ＳＡＩＮＴ》
