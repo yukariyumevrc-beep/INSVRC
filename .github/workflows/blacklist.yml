@@ -92,7 +92,28 @@ jobs:
             Paradise/paradise_central_control/known_users.json
           if git diff --cached --quiet; then
             echo "nothing changed"
-          else
-            git commit -m "blacklist: resolve names and rebuild list [skip ci]"
-            git push
+            exit 0
           fi
+
+          git commit -m "blacklist: resolve names and rebuild list [skip ci]"
+
+          # A queued run checks out the commit it was created on, so by the time
+          # it gets here main may already carry another run's result and the push
+          # is refused. Rebase and retry; if that cannot be done cleanly, the
+          # other run's result is already correct and this one has nothing to
+          # add, so stop quietly rather than failing the job with a red X.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "push rejected, rebasing onto the latest main"
+            git fetch origin "$GITHUB_REF_NAME"
+            if ! git rebase "origin/$GITHUB_REF_NAME"; then
+              git rebase --abort || true
+              echo "another run already updated the list; nothing to do"
+              exit 0
+            fi
+          done
+
+          echo "could not push after 3 attempts; the next scheduled run will pick this up"

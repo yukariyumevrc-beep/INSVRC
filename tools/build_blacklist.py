@@ -188,6 +188,13 @@ def parse_sources(paths):
                     if entry.user_id and not existing.user_id:
                         existing.user_id = entry.user_id
                         seen_ids[entry.user_id] = existing
+
+                        # A name carrying an id was written by a profile read; a
+                        # bare name is whatever somebody typed once. So the id's
+                        # spelling wins, even when the two differ only by case.
+                        # Without this, a stale bare line keeps resurrecting the
+                        # old spelling on every run that is not a --refresh.
+                        existing.name = entry.name
                     continue
 
                 entries.append(entry)
