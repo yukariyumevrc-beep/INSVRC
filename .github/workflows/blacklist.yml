@@ -1,0 +1,99 @@
+# NEW GEN BLACKLIST V3 - list builder
+#
+# Paste a VRChat profile link or a bare usr_ id into
+#   Paradise/paradise_central_control/sources/global_blacklist.src
+# straight from GitHub's web editor, commit, and this does the rest:
+#
+#   1. reads each usr_ id's PUBLIC profile page and pulls the display name out of
+#      its Open Graph tags (the same tags a Discord link preview reads)
+#   2. writes the name back into the source file, so your pasted id turns into
+#        usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | 《ＳＡＩＮＴ》
+#   3. compiles the list the world downloads
+#   4. commits both back
+#
+# No VRChat login, no API token, no cookie. Nothing to leak.
+#
+# It also re-checks every id every 6 hours. That is the part that beats a
+# rename: the usr_ id never changes, so the next run picks up the new display
+# name and the list repairs itself without you doing anything.
+#
+# SAFETY: --out points at the test folder on purpose. Your live
+# Paradise/paradise_central_control/global_blacklist is NOT touched. Once you
+# have watched this work and the world reads the test list correctly, change the
+# two paths in the "Compile list" step below to the live file.
+
+name: Build blacklist
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Paradise/paradise_central_control/sources/**"
+      - ".github/workflows/blacklist.yml"
+      - "tools/build_blacklist.py"
+  schedule:
+    # Every 6 hours, re-read every id to catch renames. One page fetch per entry,
+    # 1.5s apart, so a 500 entry list takes about 12 minutes. If the list grows
+    # well past that, slow this down rather than hammering vrchat.com.
+    # GitHub runs cron late under load, so treat this as a floor, not a promise.
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: "Re-check every usr_ id, not just the ones with no name yet"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: blacklist
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Known-answer tests for the hashing and the profile page parser. If
+      # VRChat ever changes that page, this step fails loudly instead of the
+      # list quietly going stale.
+      - name: Self test
+        run: python3 tools/build_blacklist.py --selftest
+
+      - name: Compile list
+        env:
+          BLACKLIST_SALT: ${{ secrets.BLACKLIST_SALT }}
+          VRC_USER_AGENT: "ParadiseBlacklistBuilder/3.0 (+https://github.com/yukariyumevrc-beep/INSVRC)"
+          REFRESH: ${{ github.event_name == 'schedule' || inputs.refresh }}
+        run: |
+          cd Paradise/paradise_central_control
+          ARGS="--src sources/global_blacklist.src \
+                --out test/global_blacklist_v3.txt \
+                --also-write test/global_blacklist_v3 \
+                --cache known_users.json \
+                --resolve \
+                --write-src"
+          if [ "$REFRESH" = "true" ]; then ARGS="$ARGS --refresh"; fi
+          python3 ../../tools/build_blacklist.py $ARGS
+
+      - name: Commit the result
+        run: |
+          git config user.name "blacklist-bot"
+          git config user.email "blacklist-bot@users.noreply.github.com"
+          git add -A \
+            Paradise/paradise_central_control/sources \
+            Paradise/paradise_central_control/test \
+            Paradise/paradise_central_control/known_users.json
+          if git diff --cached --quiet; then
+            echo "nothing changed"
+          else
+            git commit -m "blacklist: resolve names and rebuild list [skip ci]"
+            git push
+          fi

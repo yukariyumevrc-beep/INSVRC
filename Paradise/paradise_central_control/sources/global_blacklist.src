@@ -1,0 +1,44 @@
+# NEW GEN BLACKLIST V3 - SOURCE list
+#
+# THIS is the file you edit. Edit it right here in GitHub's web editor.
+# The compiled file the world downloads is generated from it; do not edit that.
+#
+# Paste whatever you have, one per line. All of these work:
+#
+#   https://vrchat.com/home/user/usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9
+#   usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9
+#   SomeDisplayName
+#   usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | SomeDisplayName | why, and the date
+#
+# Commit, wait about a minute, and the bot rewrites your line to add the
+# display name it read off the public profile page. No login needed.
+#
+# ALWAYS PASTE THE PROFILE LINK, not just the name. The usr_ id is the only
+# thing that survives a rename: the bot re-checks every id every 6 hours, so a
+# griefer who renames gets put back on the list by themselves. A line with only
+# a name is a line they can escape by changing it.
+
+[blacklist]
+
+# ---- carried over from the old string list, names only ----
+# No ids on these, so a rename defeats them. Next time one of them shows up,
+# grab the profile link and paste it onto the line.
+-VinZen-
+IntrovertNight
+KasugiGamer
+kawinkhwylek 3270
+KIKIKIKI7397
+kikikiki7397 8390
+KIKIKIKI7397 3d5d
+NANOOHHO
+RossoWhero
+Wireder
+
+# ---- new entries go below, with the link and a reason ----
+
+
+# Nobody in this section can ever be blacklisted, even if their name also
+# appears above. This is what stops a typo from locking you out of your own
+# world. The id is here so your immunity follows you if you ever rename.
+[immune]
+usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | 《ＳＡＩＮＴ》
