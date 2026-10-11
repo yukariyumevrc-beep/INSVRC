@@ -13,7 +13,7 @@
 #
 # No VRChat login, no API token, no cookie. Nothing to leak.
 #
-# It also re-checks every id every 6 hours. That is the part that beats a
+# It also re-checks every id every 3 hours. That is the part that beats a
 # rename: the usr_ id never changes, so the next run picks up the new display
 # name and the list repairs itself without you doing anything.
 #
@@ -31,11 +31,12 @@ on:
       - ".github/workflows/blacklist.yml"
       - "tools/build_blacklist.py"
   schedule:
-    # Every 6 hours, re-read every id to catch renames. One page fetch per entry,
-    # 1.5s apart, so a 500 entry list takes about 12 minutes. If the list grows
-    # well past that, slow this down rather than hammering vrchat.com.
+    # Every 3 hours, re-read every id to catch renames. One page fetch per entry,
+    # 1.5s apart: 20 entries is about 30 seconds a run, 8 runs a day. A 500 entry
+    # list would be 12 minutes a run, which at this interval is too much traffic
+    # to point at vrchat.com, so widen this again if the list ever grows like that.
     # GitHub runs cron late under load, so treat this as a floor, not a promise.
-    - cron: "17 */6 * * *"
+    - cron: "17 */3 * * *"
   workflow_dispatch:
     inputs:
       refresh:
