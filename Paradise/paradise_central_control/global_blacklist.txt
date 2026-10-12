@@ -1,10 +1,9 @@
 # NEW GEN BLACKLIST V3
-# generated 2026-10-12 13:47 UTC by build_blacklist.py - do not edit by hand, edit the source file
+# generated 2026-10-12 13:53 UTC by build_blacklist.py - do not edit by hand, edit the source file
 # format: usr_id | DisplayName | note    (any field may be omitted, '#' starts a comment)
 # only DisplayName can be matched in-world: Udon has no access to usr_ ids
-#!count=24
+#!count=23
 [blacklist]
-usr_d451c993-f91e-451e-83e4-35258cae671a | -VinZen-
 usr_010df9d2-e0ae-4633-91fe-97fe6530609b | ILuvTomboy
 IntrovertNight
 usr_7d2de0fa-55cc-42ad-b8a2-fdd8e4d50253 | jt207455 0253
