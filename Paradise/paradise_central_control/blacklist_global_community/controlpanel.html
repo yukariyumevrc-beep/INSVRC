@@ -903,11 +903,13 @@
     return Math.round(hours / 24) + "D AGO";
   }
 
+  // Matched against the exact shapes the robot and this panel write, not loose
+  // keywords: an ordinary commit that happens to say "add" is not a list entry.
   function classify(subject) {
     var s = subject.toLowerCase();
     if (/^blacklist:/.test(s)) return { tag: "ROBOT", cls: "add" };
-    if (/\bremove\b/.test(s)) return { tag: "REMOVE", cls: "bad" };
-    if (/\badd\b/.test(s)) return { tag: "ADD", cls: "noid" };
+    if (/:\s*add \d+ entr(y|ies) to \w+/.test(s)) return { tag: "ADD", cls: "noid" };
+    if (/:\s*remove .+ from the (control panel|console)/.test(s)) return { tag: "REMOVE", cls: "bad" };
     return { tag: "EDIT", cls: "dup" };
   }
 
