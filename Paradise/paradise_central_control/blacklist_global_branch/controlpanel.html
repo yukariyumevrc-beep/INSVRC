@@ -98,6 +98,8 @@
     letter-spacing: -.02em; overflow-wrap: anywhere;
   }
   .cell dd.sm { font-size: 13px; font-weight: 500; letter-spacing: .08em; padding-block: 5px; }
+  .telemetry.inner { border-left: 0; border-right: 0; border-top: 0; }
+  .cell dd.count { font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 700; letter-spacing: .02em; }
   .on { color: var(--green); }
   .off { color: var(--red); }
 
@@ -297,9 +299,36 @@
     </div>
   </section>
 
-  <!-- ============ 04 AUTH ============ -->
+  <!-- ============ 04 NAME SCAN ============ -->
   <section class="unit">
-    <div class="unit-head"><h2><i>[</i> 04 / AUTHORISATION <i>]</i></h2></div>
+    <div class="unit-head">
+      <h2><i>[</i> 04 / NAME SCAN <i>]</i></h2>
+      <button class="act sm" id="scanBtn" type="button">REFRESH</button>
+    </div>
+
+    <dl class="telemetry inner">
+      <div class="cell"><dt>LAST SCAN</dt><dd class="sm" id="scanLast">—</dd></div>
+      <div class="cell"><dt>OUTCOME</dt><dd class="sm" id="scanOutcome">—</dd></div>
+      <div class="cell"><dt>NEXT SCAN IN</dt><dd class="sm" id="scanCountdown">—</dd></div>
+      <div class="cell"><dt>INTERVAL</dt><dd class="sm">EVERY 3H</dd></div>
+    </dl>
+
+    <div class="unit-body">
+      <div id="scanFound"></div>
+      <div class="rows" id="scanRuns"><div class="empty">READING RUN HISTORY...</div></div>
+      <p class="note-s">
+        THE ROBOT RE-READS EVERY USR ID ON A SCHEDULE, WHICH IS WHAT CATCHES A RENAME.
+        IT ONLY COMMITS WHEN SOMETHING ACTUALLY CHANGED, SO A SCAN THAT FOUND NOTHING
+        LEAVES NO TRACE IN THE ACTIVITY LOG — ONLY HERE.
+        GITHUB RUNS SCHEDULED JOBS LATE UNDER LOAD, SO THE COUNTDOWN IS THE EARLIEST TIME, NOT A PROMISE.
+      </p>
+      <div id="scanMsg"></div>
+    </div>
+  </section>
+
+  <!-- ============ 05 AUTH ============ -->
+  <section class="unit">
+    <div class="unit-head"><h2><i>[</i> 05 / AUTHORISATION <i>]</i></h2></div>
     <div class="unit-body">
       <div id="connMsg"></div>
       <label class="field" for="tokenBox">
@@ -503,7 +532,7 @@
     el("addBtn").disabled = n === 0 || !token;
     el("addHint").textContent = rows.length === 0
       ? "AWAITING INPUT"
-      : !token ? n + " READY — AUTHORISE IN UNIT 03 TO COMMIT"
+      : !token ? n + " READY — AUTHORISE IN UNIT 05 TO COMMIT"
       : n === 0 ? "NOTHING NEW TO ADD"
       : "WILL ADD " + n + " TO " + targetSection.toUpperCase();
   }
@@ -664,7 +693,10 @@
         var canWrite = !!(repo.permissions && repo.permissions.push);
         saveToken(token);
         setConnected(true, repo.full_name);
+        // A token raises the API rate limit, so both feeds get another go.
         loadActivity();
+        loadScans();
+
         if (canWrite) {
           show("connMsg", "ok", "LINK ESTABLISHED — <b>" + esc(repo.full_name) + "</b> — WRITE AUTHORISED.");
         } else {
@@ -868,7 +900,7 @@
   }
 
   function reRunWorkflow() {
-    if (!token) { show("listMsg", "err", "AUTHORISE IN UNIT 03 FIRST."); return; }
+    if (!token) { show("listMsg", "err", "AUTHORISE IN UNIT 05 FIRST."); return; }
     el("refreshNamesBtn").disabled = true;
     show("listMsg", "info", "DISPATCHING RE-SCAN...");
 
@@ -924,7 +956,7 @@
 
     fetch(url, { headers: headers })
       .then(function (r) {
-        if (!r.ok) throw new Error(r.status === 403 ? "GitHub rate limit reached — authorise in unit 04, or wait." : "HTTP " + r.status);
+        if (!r.ok) throw new Error(r.status === 403 ? "GitHub rate limit reached — authorise in unit 05, or wait." : "HTTP " + r.status);
         return r.json();
       })
       .then(function (commits) {
@@ -967,6 +999,112 @@
       });
   }
 
+  // ---------- name scan ----------
+  // Run history, not commits. The robot only commits when something changed, so
+  // a scan that found nothing leaves no trace anywhere else — yet "it checked
+  // and everything was fine" is exactly what you want to be able to see.
+  var SCAN_HOURS = 3;     // must match the cron in .github/workflows/blacklist.yml
+  var SCAN_MINUTE = 17;
+
+  function nextScanAt(now) {
+    var t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+                              now.getUTCHours(), SCAN_MINUTE, 0, 0));
+    for (var i = 0; i < 48; i++) {
+      if (t > now && t.getUTCHours() % SCAN_HOURS === 0) return t;
+      t = new Date(t.getTime() + 3600000);
+    }
+    return null;
+  }
+
+  function hms(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h + "H " + String(m).padStart(2, "0") + "M " + String(s % 60).padStart(2, "0") + "S";
+  }
+
+  function tickCountdown() {
+    var due = nextScanAt(new Date());
+    if (!due) return;
+    var elapsed = due.getTime() - Date.now();
+    var node = el("scanCountdown");
+    node.className = "sm count";
+    node.textContent = hms(elapsed);
+    node.title = "Earliest " + due.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+  }
+
+  function utcStamp(iso) {
+    return new Date(iso).toISOString().replace("T", " ").slice(0, 16) + " UTC";
+  }
+
+  function loadScans() {
+    el("scanRuns").innerHTML = '<div class="empty">READING RUN HISTORY...</div>';
+    clearMsg("scanMsg");
+    clearMsg("scanFound");
+
+    var url = API + "/repos/" + OWNER + "/" + REPO + "/actions/workflows/" + WORKFLOW_FILE + "/runs?per_page=10";
+    var headers = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+    if (token) headers.Authorization = "Bearer " + token;
+
+    fetch(url, { headers: headers })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status === 403 ? "GitHub rate limit reached — authorise in unit 05, or wait." : "HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var runs = (data.workflow_runs || []).filter(function (r) { return r.status === "completed"; });
+        if (!runs.length) {
+          el("scanRuns").innerHTML = '<div class="empty">NO COMPLETED RUNS YET</div>';
+          el("scanLast").textContent = "NEVER";
+          el("scanOutcome").textContent = "—";
+          return;
+        }
+
+        var last = runs[0];
+        el("scanLast").textContent = utcStamp(last.run_started_at || last.created_at);
+        el("scanLast").title = ago(last.run_started_at || last.created_at);
+
+        var okNode = el("scanOutcome");
+        okNode.textContent = (last.conclusion || "?").toUpperCase();
+        okNode.className = "sm " + (last.conclusion === "success" ? "on" : "off");
+
+        el("scanRuns").innerHTML = runs.map(function (r) {
+          var started = r.run_started_at || r.created_at;
+          var good = r.conclusion === "success";
+          return '<div class="r">' +
+            '<span class="tag ' + (good ? "add" : "bad") + '">' + (good ? "OK" : (r.conclusion || "?").toUpperCase()) + "</span>" +
+            '<span class="who">' +
+              '<span class="nm">' + esc(utcStamp(started)) + "</span>" +
+              '<span class="uid">' + esc(r.event) + " &nbsp;///&nbsp; " + ago(started) + "</span>" +
+            "</span>" +
+            '<span class="acts"><a class="lk" href="' + esc(r.html_url) + '" target="_blank" rel="noopener">LOG</a></span>' +
+            "</div>";
+        }).join("");
+
+        // What the most recent scan actually found, in the robot's own words.
+        // It writes that into the commit subject, so look there.
+        var commitsUrl = API + "/repos/" + OWNER + "/" + REPO + "/commits?per_page=20&path=" + encodeURIComponent(DIR);
+        return fetch(commitsUrl, { headers: headers })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (commits) {
+            var bot = commits.filter(function (c) { return /^blacklist:/i.test(c.commit.message || ""); })[0];
+            if (!bot) {
+              show("scanFound", "info", "NO SCAN HAS CHANGED THIS LIST YET. EVERY RUN SO FAR FOUND EVERY NAME ALREADY CORRECT.");
+              return;
+            }
+            var subject = bot.commit.message.split("\n")[0]
+              .replace(/^blacklist:\s*/i, "").replace(/\s*\[skip ci\]\s*$/i, "");
+            var when = bot.commit.author ? ago(bot.commit.author.date) : "";
+            show("scanFound", "ok", "LAST CHANGE A SCAN MADE &nbsp;///&nbsp; " + esc(when) + "<br><b>" + esc(subject) + "</b>");
+          });
+      })
+      .catch(function (err) {
+        describeError(err);
+        el("scanRuns").innerHTML = '<div class="empty">RUN HISTORY UNREADABLE</div>';
+        el("scanLast").textContent = "—";
+        show("scanMsg", "err", esc(err.message));
+      });
+  }
+
   // ---------- section switches ----------
   function setTargetSection(section) {
     targetSection = section;
@@ -999,6 +1137,7 @@
   el("addBtn").addEventListener("click", addEntries);
   el("reloadBtn").addEventListener("click", loadPublished);
   el("logBtn").addEventListener("click", loadActivity);
+  el("scanBtn").addEventListener("click", loadScans);
   el("refreshNamesBtn").addEventListener("click", reRunWorkflow);
   el("connectBtn").addEventListener("click", connect);
   el("clearBtn").addEventListener("click", function () {
@@ -1039,6 +1178,11 @@
   setConnected(false);
   loadPublished();
   loadActivity();
+  loadScans();
+
+  // One timer for the life of the page, started here and nowhere else.
+  tickCountdown();
+  setInterval(tickCountdown, 1000);
 
   var saved = loadToken();
   if (saved) { el("tokenBox").value = saved; connect(); }
