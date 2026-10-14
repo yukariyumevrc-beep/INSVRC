@@ -538,61 +538,85 @@
   }
 
   // ---------- registry ----------
+  // The list rarely changes between two visits, so the last copy is kept and
+  // painted immediately, then replaced by the fresh one when it lands. Cheap,
+  // and the registry stops being blank for the first third of a second.
+  var CACHE_KEY = "paradise.blacklist.list." + SLUG;
+
+  function cachedList() {
+    try { return window.sessionStorage.getItem(CACHE_KEY) || ""; } catch (e) { return ""; }
+  }
+  function cacheList(text) {
+    try { window.sessionStorage.setItem(CACHE_KEY, text); } catch (e) {}
+  }
+
   function loadPublished() {
-    el("entries").innerHTML = '<div class="empty">READING REGISTRY...</div>';
+    var warm = cachedList();
+    if (warm) applyList(warm);
+    else el("entries").innerHTML = '<div class="empty">READING REGISTRY...</div>';
     clearMsg("listMsg");
 
     fetch(PUBLISHED_URL + "?t=" + Date.now(), { cache: "no-store" })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
       .then(function (text) {
-        publishedEntries = [];
-        knownIds = Object.create(null);
-        knownNames = Object.create(null);
-        var section = "blacklist";
-        var generated = "";
-
-        text.split(/\r?\n/).forEach(function (raw) {
-          var line = raw.trim();
-          if (!line) return;
-          if (line.charAt(0) === "#") {
-            if (line.indexOf("# generated ") === 0) generated = line.slice(12).split(" by ")[0];
-            return;
-          }
-          if (line.charAt(0) === "[" && line.charAt(line.length - 1) === "]") {
-            section = sectionOfHeader(line);
-            return;
-          }
-          var e = parseLine(line);
-          if (!e) return;
-          e.section = section;
-          publishedEntries.push(e);
-          if (e.id) knownIds[e.id] = section;
-          if (e.name) knownNames[e.name.toLowerCase()] = section;
-        });
-
-        var banned = publishedEntries.filter(function (e) { return e.section === "blacklist"; });
-        var immune = publishedEntries.filter(function (e) { return e.section === "immune"; });
-        var withId = banned.filter(function (e) { return !!e.id; });
-
-        el("statCount").textContent = banned.length;
-        el("statWithId").textContent = withId.length + "/" + banned.length;
-        el("statImmune").textContent = immune.length;
-
-        el("listNote").textContent =
-          withId.length + " OF " + banned.length + " ENTRIES CARRY A USR ID AND SURVIVE A RENAME." +
-          (generated ? "  BUILT " + generated.toUpperCase() + "." : "");
-
-        renderEntries();
-        renderPreview();
+        cacheList(text);
+        applyList(text);
       })
       .catch(function (err) {
         describeError(err);
-        el("entries").innerHTML = '<div class="empty">REGISTRY UNREADABLE</div>';
-        el("listNote").textContent = "";
+        // A warm copy on screen beats an error for something that may just be
+        // a flaky moment, but say so rather than letting it look current.
+        if (!cachedList()) {
+          el("entries").innerHTML = '<div class="empty">REGISTRY UNREADABLE</div>';
+          el("listNote").textContent = "";
+        }
         show("listMsg", "err", "COULD NOT READ THE PUBLISHED LIST. " + esc(err.message) +
+          (cachedList() ? " SHOWING THE LAST COPY THIS BROWSER SAW." : "") +
           (err.blocked ? "<br><br>If even this read is blocked, nothing on this page can reach GitHub at all." : "") +
           "<br><br>Expected at <code>" + esc(PUBLISHED_URL) + "</code>");
       });
+  }
+
+  function applyList(text) {
+    publishedEntries = [];
+    knownIds = Object.create(null);
+    knownNames = Object.create(null);
+    var section = "blacklist";
+    var generated = "";
+
+    text.split(/\r?\n/).forEach(function (raw) {
+      var line = raw.trim();
+      if (!line) return;
+      if (line.charAt(0) === "#") {
+        if (line.indexOf("# generated ") === 0) generated = line.slice(12).split(" by ")[0];
+        return;
+      }
+      if (line.charAt(0) === "[" && line.charAt(line.length - 1) === "]") {
+        section = sectionOfHeader(line);
+        return;
+      }
+      var e = parseLine(line);
+      if (!e) return;
+      e.section = section;
+      publishedEntries.push(e);
+      if (e.id) knownIds[e.id] = section;
+      if (e.name) knownNames[e.name.toLowerCase()] = section;
+    });
+
+    var banned = publishedEntries.filter(function (e) { return e.section === "blacklist"; });
+    var immune = publishedEntries.filter(function (e) { return e.section === "immune"; });
+    var withId = banned.filter(function (e) { return !!e.id; });
+
+    el("statCount").textContent = banned.length;
+    el("statWithId").textContent = withId.length + "/" + banned.length;
+    el("statImmune").textContent = immune.length;
+
+    el("listNote").textContent =
+      withId.length + " OF " + banned.length + " ENTRIES CARRY A USR ID AND SURVIVE A RENAME." +
+      (generated ? "  BUILT " + generated.toUpperCase() + "." : "");
+
+    renderEntries();
+    renderPreview();
   }
 
   function renderEntries() {
@@ -693,8 +717,9 @@
         var canWrite = !!(repo.permissions && repo.permissions.push);
         saveToken(token);
         setConnected(true, repo.full_name);
-        // A token raises the API rate limit, so both feeds get another go.
-        loadActivity();
+        // A token raises the API rate limit and changes the auth header, so the
+        // shared fetch is dropped and both feeds go again.
+        loadActivity(true);
         loadScans();
 
         if (canWrite) {
@@ -920,6 +945,30 @@
       .then(function () { el("refreshNamesBtn").disabled = false; });
   }
 
+  // ---------- shared fetches ----------
+  // The activity log and the scan panel both want this folder's commits. Fetch
+  // it once and hand the same promise to both: one request instead of two, and
+  // neither has to wait for the other to finish first.
+  var commitsPromise = null;
+
+  function apiHeaders() {
+    var h = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+    if (token) h.Authorization = "Bearer " + token;  // a token raises the rate limit
+    return h;
+  }
+
+  function getCommits(force) {
+    if (commitsPromise && !force) return commitsPromise;
+    commitsPromise = fetch(
+      API + "/repos/" + OWNER + "/" + REPO + "/commits?per_page=20&path=" + encodeURIComponent(DIR),
+      { headers: apiHeaders() }
+    ).then(function (r) {
+      if (!r.ok) throw new Error(r.status === 403 ? "GitHub rate limit reached — authorise in unit 05, or wait." : "HTTP " + r.status);
+      return r.json();
+    });
+    return commitsPromise;
+  }
+
   // ---------- activity log ----------
   // Read from the commit history of this folder. Commits are the one record
   // that survives: the Actions log scrolls away, and a commit carries who did
@@ -945,21 +994,13 @@
     return { tag: "EDIT", cls: "dup" };
   }
 
-  function loadActivity() {
+  function loadActivity(force) {
     el("activity").innerHTML = '<div class="empty">READING LOG...</div>';
     clearMsg("logMsg");
 
-    var url = API + "/repos/" + OWNER + "/" + REPO + "/commits?per_page=14&path=" + encodeURIComponent(DIR);
-    var headers = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
-    // Signed-in requests get a far higher rate limit, but this works without one.
-    if (token) headers.Authorization = "Bearer " + token;
-
-    fetch(url, { headers: headers })
-      .then(function (r) {
-        if (!r.ok) throw new Error(r.status === 403 ? "GitHub rate limit reached — authorise in unit 05, or wait." : "HTTP " + r.status);
-        return r.json();
-      })
-      .then(function (commits) {
+    getCommits(force)
+      .then(function (all) {
+        var commits = all.slice(0, 14);
         if (!commits.length) {
           el("activity").innerHTML = '<div class="empty">NO HISTORY FOR THIS LIST YET</div>';
           el("lastRun").textContent = "NEVER";
@@ -1042,10 +1083,8 @@
     clearMsg("scanFound");
 
     var url = API + "/repos/" + OWNER + "/" + REPO + "/actions/workflows/" + WORKFLOW_FILE + "/runs?per_page=10";
-    var headers = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
-    if (token) headers.Authorization = "Bearer " + token;
 
-    fetch(url, { headers: headers })
+    fetch(url, { headers: apiHeaders() })
       .then(function (r) {
         if (!r.ok) throw new Error(r.status === 403 ? "GitHub rate limit reached — authorise in unit 05, or wait." : "HTTP " + r.status);
         return r.json();
@@ -1080,11 +1119,11 @@
             "</div>";
         }).join("");
 
-        // What the most recent scan actually found, in the robot's own words.
-        // It writes that into the commit subject, so look there.
-        var commitsUrl = API + "/repos/" + OWNER + "/" + REPO + "/commits?per_page=20&path=" + encodeURIComponent(DIR);
-        return fetch(commitsUrl, { headers: headers })
-          .then(function (r) { return r.ok ? r.json() : []; })
+        // What the most recent scan actually found, in the robot's own words:
+        // it writes that into the commit subject. Shares the activity log's
+        // fetch rather than asking for the same thing again.
+        return getCommits(false)
+          .catch(function () { return []; })
           .then(function (commits) {
             var bot = commits.filter(function (c) { return /^blacklist:/i.test(c.commit.message || ""); })[0];
             if (!bot) {
@@ -1136,8 +1175,8 @@
   el("filterBox").addEventListener("input", renderEntries);
   el("addBtn").addEventListener("click", addEntries);
   el("reloadBtn").addEventListener("click", loadPublished);
-  el("logBtn").addEventListener("click", loadActivity);
-  el("scanBtn").addEventListener("click", loadScans);
+  el("logBtn").addEventListener("click", function () { loadActivity(true); });
+  el("scanBtn").addEventListener("click", function () { commitsPromise = null; loadScans(); });
   el("refreshNamesBtn").addEventListener("click", reRunWorkflow);
   el("connectBtn").addEventListener("click", connect);
   el("clearBtn").addEventListener("click", function () {

@@ -59,9 +59,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      # No setup-python step: ubuntu runners ship a python3 new enough, the tool
+      # is standard library only, and installing another one cost ~15s of every
+      # run for nothing.
 
       # Known-answer tests for the hashing and the profile page parser. If
       # VRChat ever changes that page, this step fails loudly instead of the
