@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Paradise Blacklist Control</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  /* Tactical telemetry: dark CRT substrate, monospace telemetry, hazard red.
+     Layout is a blueprint grid — 1px gaps over a line-coloured parent. */
+  :root {
+    --sub:    #0A0A0A;   /* deactivated CRT, never pure black */
+    --panel:  #121212;
+    --panel2: #171717;
+    --line:   #2A2A2A;
+    --fg:     #EAEAEA;   /* white phosphor */
+    --dim:    #8A8A8A;
+    --faint:  #5A5A5A;
+    --red:    #E61919;   /* aviation hazard — the only accent */
+    --green:  #4AF626;   /* armed indicator ONLY */
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; border-radius: 0 !important; }
+
+  html, body { margin: 0; background: var(--sub); }
+
+  body {
+    color: var(--fg);
+    font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.45;
+    padding-inline: 16px;
+    padding-block: 24px 72px;
+    position: relative;
+  }
+
+  /* electron beam sweep + mechanical grain */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.22) 2px, rgba(0,0,0,.22) 4px);
+    mix-blend-mode: multiply;
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: 9998; pointer-events: none; opacity: .035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
+  }
+
+  .wrap { max-width: 1040px; margin: 0 auto; }
+
+  /* ---------- macro header ---------- */
+  .head { border: 1px solid var(--line); border-bottom-width: 2px; padding: 20px 18px 14px; }
+  .kicker {
+    font-size: 10px; letter-spacing: .18em; color: var(--dim);
+    display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px;
+  }
+  h1 {
+    font-family: 'Archivo Black', Impact, sans-serif;
+    font-size: clamp(2.1rem, 7.5vw, 4.6rem);
+    line-height: .88; letter-spacing: -.04em; text-transform: uppercase;
+    margin: 0; text-wrap: balance;
+  }
+  h1 .mark { color: var(--red); }
+
+  .scope {
+    margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px 16px;
+    align-items: baseline; justify-content: space-between;
+  }
+  .scope-id {
+    font-size: 12px; letter-spacing: .14em; color: var(--fg);
+    border-left: 3px solid var(--red); padding-left: 10px;
+  }
+  .scope-id b { color: var(--red); font-weight: 700; }
+  a.jump { color: var(--dim); font-size: 11px; letter-spacing: .12em; text-decoration: none; border-bottom: 1px solid var(--line); }
+  a.jump:hover { color: var(--fg); border-color: var(--red); }
+
+  /* ---------- telemetry strip ---------- */
+  .telemetry {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: var(--line); border: 1px solid var(--line); border-top: 0;
+  }
+  @media (max-width: 620px) { .telemetry { grid-template-columns: repeat(2, 1fr); } }
+  .cell { background: var(--panel); padding: 12px 14px; min-width: 0; }
+  .cell dt { font-size: 10px; letter-spacing: .16em; color: var(--dim); margin: 0 0 6px; }
+  .cell dd {
+    margin: 0; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em; overflow-wrap: anywhere;
+  }
+  .cell dd.sm { font-size: 13px; font-weight: 500; letter-spacing: .08em; padding-block: 5px; }
+  .on { color: var(--green); }
+  .off { color: var(--red); }
+
+  /* ---------- compartments ---------- */
+  section.unit { border: 1px solid var(--line); border-top: 0; }
+  .unit-head {
+    display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between;
+    padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--panel2);
+  }
+  .unit-head h2 { font-size: 11px; letter-spacing: .18em; margin: 0; color: var(--fg); font-weight: 700; }
+  .unit-head h2 i { color: var(--red); font-style: normal; }
+  .unit-body { padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---------- controls ---------- */
+  .seg { display: inline-flex; border: 1px solid var(--line); }
+  .seg button {
+    border: 0; border-right: 1px solid var(--line); background: var(--panel);
+    color: var(--dim); font-family: inherit; font-size: 10px; letter-spacing: .14em;
+    padding: 7px 13px; cursor: pointer;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover:not([aria-pressed="true"]) { color: var(--fg); }
+  .seg button[aria-pressed="true"] { background: var(--red); color: #fff; font-weight: 700; }
+  .seg button.alt[aria-pressed="true"] { background: var(--fg); color: var(--sub); }
+
+  label.field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .lab { font-size: 10px; letter-spacing: .16em; color: var(--dim); }
+
+  textarea, input[type="text"], input[type="password"] {
+    font-family: inherit; font-size: 13px; color: var(--fg);
+    background: var(--sub); border: 1px solid var(--line); padding: 10px 12px; width: 100%; min-width: 0;
+  }
+  textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+  :is(textarea, input)::placeholder { color: var(--faint); }
+  :is(textarea, input):focus-visible { outline: 2px solid var(--red); outline-offset: -1px; }
+
+  button.act {
+    font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .14em;
+    border: 1px solid var(--line); background: var(--panel2); color: var(--fg);
+    padding: 10px 18px; cursor: pointer;
+  }
+  button.act:hover:not(:disabled) { border-color: var(--fg); }
+  button.act:disabled { opacity: .35; cursor: not-allowed; }
+  button.act:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+  button.act.go { background: var(--red); border-color: var(--red); color: #fff; }
+  button.act.sm { font-size: 10px; padding: 6px 11px; letter-spacing: .12em; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .grow { flex: 1 1 200px; min-width: 0; }
+
+  /* ---------- data rows ---------- */
+  .rows { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .rows.scroll { max-height: 440px; overflow-y: auto; }
+  .r { background: var(--panel); padding: 9px 12px; display: flex; flex-wrap: wrap; gap: 5px 12px; align-items: center; min-width: 0; }
+  .r .who { flex: 1 1 230px; min-width: 0; display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: baseline; }
+  .r .nm { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+  .r.imm .nm { color: var(--green); }
+  .r .uid { font-size: 10.5px; color: var(--faint); overflow-wrap: anywhere; letter-spacing: .04em; }
+  .r .note { flex-basis: 100%; font-size: 10.5px; color: var(--dim); }
+  .r .acts { display: flex; gap: 6px; flex: none; }
+
+  .tag { font-size: 9.5px; font-weight: 700; letter-spacing: .12em; padding: 3px 7px; white-space: nowrap; border: 1px solid; }
+  .tag.add { color: var(--green); border-color: var(--green); }
+  .tag.dup { color: var(--dim); border-color: var(--line); }
+  .tag.bad { color: var(--red); border-color: var(--red); }
+  .tag.noid { color: var(--fg); border-color: var(--fg); }
+
+  a.lk {
+    font-size: 10px; letter-spacing: .12em; text-decoration: none; color: var(--dim);
+    border: 1px solid var(--line); padding: 5px 9px; white-space: nowrap;
+  }
+  a.lk:hover { color: var(--fg); border-color: var(--fg); }
+  button.del { color: var(--red); border-color: #4a1414; }
+  button.del.armed { background: var(--red); color: #fff; border-color: var(--red); }
+
+  .empty { background: var(--panel); color: var(--faint); font-size: 11px; letter-spacing: .1em; padding: 16px 12px; }
+
+  /* ---------- messages ---------- */
+  .msg { border: 1px solid var(--line); border-left-width: 3px; padding: 10px 13px; font-size: 12px; }
+  .msg.ok { border-left-color: var(--green); color: var(--green); }
+  .msg.err { border-left-color: var(--red); color: var(--red); }
+  .msg.info { border-left-color: var(--dim); color: var(--dim); }
+  .msg a { color: inherit; }
+  .msg b { color: var(--fg); }
+
+  .note-s { font-size: 10.5px; color: var(--faint); line-height: 1.6; letter-spacing: .04em; }
+  /* Paths and ids are long, unbroken strings. Without this they push the whole
+     page wider than the viewport and the body scrolls sideways. */
+  code { font-family: inherit; color: var(--fg); background: var(--panel2); padding: 1px 5px; overflow-wrap: anywhere; }
+  .msg, .note-s, footer p { overflow-wrap: anywhere; }
+
+  details.doc { border-top: 1px solid var(--line); }
+  details.doc > summary { padding: 11px 14px; cursor: pointer; font-size: 10px; letter-spacing: .16em; color: var(--dim); }
+  details.doc > summary:hover { color: var(--fg); }
+  details.doc > summary:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
+  ol.steps { margin: 0; padding-left: 18px; font-size: 12px; color: var(--dim); line-height: 1.8; }
+  ol.steps b { color: var(--fg); }
+  ol.steps a { color: var(--red); }
+
+  footer { border: 1px solid var(--line); border-top: 0; padding: 12px 14px; }
+
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="head">
+    <div class="kicker">
+      <span>PARADISE ® MODERATION</span><span>///</span>
+      <span>UNIT <span id="kUnit">—</span></span><span>///</span>
+      <span>REV 3.0</span>
+    </div>
+    <h1>Blacklist<br><span class="mark">Control</span></h1>
+    <div class="scope">
+      <div class="scope-id">SCOPE &nbsp;<b id="scopeName">—</b></div>
+      <a class="jump" id="jumpOther" href="#">&gt;&gt;&gt; SWITCH TO <span id="jumpLabel">—</span></a>
+    </div>
+  </header>
+
+  <dl class="telemetry">
+    <div class="cell"><dt>LISTED</dt><dd id="statCount">—</dd></div>
+    <div class="cell"><dt>ID TRACKED</dt><dd id="statWithId">—</dd></div>
+    <div class="cell"><dt>IMMUNE</dt><dd id="statImmune">—</dd></div>
+    <div class="cell"><dt>LINK</dt><dd class="sm off" id="statLink">OFFLINE</dd></div>
+  </dl>
+
+  <!-- ============ 01 INGEST ============ -->
+  <section class="unit">
+    <div class="unit-head">
+      <h2><i>[</i> 01 / INGEST <i>]</i></h2>
+      <div class="row">
+        <span class="seg" role="group" aria-label="Target list">
+          <button type="button" id="segBlacklist" aria-pressed="true">BLACKLIST</button>
+          <button type="button" id="segImmune" class="alt" aria-pressed="false">IMMUNE</button>
+        </span>
+        <button class="act sm" id="clearBtn" type="button">CLEAR</button>
+      </div>
+    </div>
+    <div class="unit-body">
+      <div id="sectionNote"></div>
+
+      <label class="field" for="pasteBox">
+        <span class="lab">PROFILE LINK / USR ID / DISPLAY NAME &nbsp;—&nbsp; ONE PER LINE, REASON AFTER |</span>
+        <textarea id="pasteBox" spellcheck="false" placeholder="https://vrchat.com/home/user/usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx | crashed the bar"></textarea>
+      </label>
+
+      <div id="previewWrap" hidden><div class="rows" id="preview"></div></div>
+
+      <div class="row">
+        <span class="note-s grow" id="addHint">AWAITING INPUT</span>
+        <button class="act go" id="addBtn" type="button" disabled>COMMIT</button>
+      </div>
+
+      <div id="addMsg"></div>
+    </div>
+  </section>
+
+  <!-- ============ 02 REGISTRY ============ -->
+  <section class="unit">
+    <div class="unit-head">
+      <h2><i>[</i> 02 / REGISTRY <i>]</i></h2>
+      <div class="row">
+        <span class="seg" role="group" aria-label="Filter">
+          <button type="button" id="viewAll" aria-pressed="true">ALL</button>
+          <button type="button" id="viewBlacklist" aria-pressed="false">BLACKLIST</button>
+          <button type="button" id="viewImmune" class="alt" aria-pressed="false">IMMUNE</button>
+        </span>
+        <button class="act sm" id="refreshNamesBtn" type="button">RE-SCAN</button>
+        <button class="act sm" id="reloadBtn" type="button">RELOAD</button>
+      </div>
+    </div>
+    <div class="unit-body">
+      <label class="field" for="filterBox">
+        <input type="text" id="filterBox" placeholder="FILTER BY NAME OR ID" spellcheck="false">
+      </label>
+      <div class="rows scroll" id="entries"><div class="empty">READING REGISTRY...</div></div>
+      <p class="note-s" id="listNote"></p>
+      <div id="listMsg"></div>
+    </div>
+  </section>
+
+  <!-- ============ 03 AUTH ============ -->
+  <section class="unit">
+    <div class="unit-head"><h2><i>[</i> 03 / AUTHORISATION <i>]</i></h2></div>
+    <div class="unit-body">
+      <div id="connMsg"></div>
+      <label class="field" for="tokenBox">
+        <span class="lab">GITHUB FINE-GRAINED TOKEN</span>
+        <input type="password" id="tokenBox" placeholder="github_pat_..." spellcheck="false" autocomplete="off">
+      </label>
+      <div class="row">
+        <span class="note-s grow">HELD IN THIS BROWSER ONLY. NEVER REACHES CLAUDE, THIS PAGE'S AUTHOR, OR ANYONE YOU SHARE THE LINK WITH.</span>
+        <button class="act" id="forgetBtn" type="button">FORGET</button>
+        <button class="act go" id="connectBtn" type="button">CONNECT</button>
+      </div>
+    </div>
+
+    <details class="doc">
+      <summary>[ + ] HOW TO ISSUE THE TOKEN — ONE MINUTE, ONCE</summary>
+      <div class="unit-body">
+        <ol class="steps">
+          <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a></li>
+          <li><b>Resource owner</b> must be <b>yukariyumevrc-beep</b> — sign in as that account if the dropdown does not offer it.</li>
+          <li><b>Repository access</b> &rarr; Only select repositories &rarr; <b>INSVRC</b></li>
+          <li><b>Permissions</b> &rarr; Repository permissions &rarr; <b>Contents: Read and write</b>. This is a separate step from picking the repo, and skipping it is what causes a 403.</li>
+          <li>Optional, for RE-SCAN: also <b>Actions: Read and write</b></li>
+          <li>Generate, copy, paste above, press CONNECT.</li>
+        </ol>
+        <p class="note-s">Scoped this way the token can only read and write files in INSVRC. If it ever leaks, revoke it on that same page and issue a new one.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    <p class="note-s" style="margin:0">
+      THIS PAGE IS PUBLIC AND INERT WITHOUT YOUR OWN TOKEN. &nbsp;///&nbsp;
+      SOURCE <code id="footSrc">—</code> &nbsp;///&nbsp;
+      PUBLISHED LIST REBUILDS ~1 MIN AFTER EACH COMMIT, EVERY ID RE-READ EVERY 3 HOURS.
+    </p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var OWNER = "yukariyumevrc-beep";
+  var REPO = "INSVRC";
+  var BRANCH = "main";
+  var PAGES = "https://" + OWNER + ".github.io/" + REPO + "/";
+  var WORKFLOW_FILE = "blacklist.yml";
+  var API = "https://api.github.com";
+
+  // ---- self-configuration -------------------------------------------------
+  // One identical file lives in every list folder. Which list it drives is
+  // decided by where it is sitting, not by an edited constant, so the copies
+  // can never drift apart.
+  var FALLBACK_DIR = "Paradise/paradise_central_control/blacklist_global_community";
+
+  function detectDir() {
+    var path = decodeURIComponent(window.location.pathname || "");
+    var at = path.lastIndexOf("/Paradise/");
+    if (at === -1) return FALLBACK_DIR;
+    var dir = path.slice(at + 1);              // "Paradise/.../controlpanel.html"
+    dir = dir.replace(/\/[^\/]*$/, "");        // drop the file name
+    return dir || FALLBACK_DIR;
+  }
+
+  var DIR = detectDir();
+  var SRC_PATH = DIR + "/sources/global_blacklist.src";
+  var PUBLISHED_URL = PAGES + DIR + "/global_blacklist.txt";
+  var TOKEN_KEY = "paradise.blacklist.token";   // shared: one token drives both panels
+
+  var LISTS = {
+    blacklist_global_community: { label: "COMMUNITY", other: "blacklist_global_branch" },
+    blacklist_global_branch:    { label: "BRANCH",    other: "blacklist_global_community" }
+  };
+
+  var SLUG = DIR.split("/").pop();
+  var INFO = LISTS[SLUG] || { label: SLUG.toUpperCase(), other: null };
+
+  var USER_ID_RE = /usr_[0-9A-Za-z_-]{4,}/;
+
+  var el = function (id) { return document.getElementById(id); };
+  var token = "";
+  var publishedEntries = [];
+  var knownIds = Object.create(null);     // id -> section
+  var knownNames = Object.create(null);   // lowercased name -> section
+  var parsed = [];
+  var targetSection = "blacklist";
+  var viewSection = "all";
+
+  // ---------- storage ----------
+  function loadToken() { try { return window.localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } }
+  function saveToken(v) { try { window.localStorage.setItem(TOKEN_KEY, v); } catch (e) {} }
+  function dropToken() { try { window.localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+
+  // ---------- base64 that survives 《ＳＡＩＮＴ》 and Lemon［X］ziCute ----------
+  function decodeBase64(b64) {
+    var bin = atob(b64.replace(/\s/g, ""));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+  function encodeBase64(text) {
+    var bytes = new TextEncoder().encode(text);
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+
+  function show(target, kind, html) { el(target).innerHTML = '<div class="msg ' + kind + '">' + html + "</div>"; }
+  function clearMsg(target) { el(target).innerHTML = ""; }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // ---------- parsing, mirrors build_blacklist.py ----------
+  function parseLine(raw) {
+    var line = raw.trim();
+    if (!line || line.charAt(0) === "#") return null;
+    if (line.charAt(0) === "[" && line.charAt(line.length - 1) === "]") return null;
+
+    var out = { id: "", name: "", note: "", problem: "" };
+    var fields = line.split("|");
+
+    for (var i = 0; i < fields.length; i++) {
+      var f = fields[i].trim();
+      if (!f) continue;
+      var m = USER_ID_RE.exec(f);
+      if (m) { if (!out.id) out.id = m[0]; continue; }
+      if (f.indexOf("://") >= 0) { out.problem = "LINK CARRIES NO USR ID"; return out; }
+      if (!out.name) out.name = f;
+      else if (!out.note) out.note = f;
+    }
+
+    if (!out.id && !out.name) return null;
+
+    if (out.name) {
+      if (out.name.length < 3) out.problem = "UNDER 3 CHARACTERS — WOULD CATCH INNOCENT PLAYERS";
+      else if (/[*?%]/.test(out.name)) out.problem = "WILDCARDS UNSUPPORTED — MATCHING IS EXACT";
+    }
+    return out;
+  }
+
+  function formatEntry(e) {
+    var parts = [];
+    if (e.id) parts.push(e.id);
+    if (e.name) parts.push(e.name);
+    if (e.note) parts.push(e.note);
+    return parts.join(" | ");
+  }
+
+  function sectionOfHeader(line) {
+    var s = line.slice(1, -1).trim().toLowerCase();
+    return (s === "immune" || s === "allowlist" || s === "whitelist") ? "immune" : "blacklist";
+  }
+
+  // ---------- ingest preview ----------
+  function renderPreview() {
+    var lines = el("pasteBox").value.split("\n");
+    parsed = [];
+    var rows = [];
+    var seen = Object.create(null);
+
+    for (var i = 0; i < lines.length; i++) {
+      var e = parseLine(lines[i]);
+      if (!e) continue;
+
+      var key = (e.id || e.name).toLowerCase();
+      var inSection = e.id ? knownIds[e.id] === targetSection
+                           : (e.name && knownNames[e.name.toLowerCase()] === targetSection);
+      var inOther = !inSection && (e.id ? !!knownIds[e.id]
+                                        : !!(e.name && knownNames[e.name.toLowerCase()]));
+      var state, why;
+
+      if (e.problem) { state = "bad"; why = e.problem; }
+      else if (seen[key]) { state = "dup"; why = "REPEATED IN THIS PASTE"; }
+      else if (inSection) { state = "dup"; why = "ALREADY IN " + targetSection.toUpperCase(); }
+      else if (!e.id) {
+        state = "noid";
+        why = inOther ? "NO ID, AND HELD IN THE OTHER LIST" : "NO ID — A RENAME DEFEATS THIS ONE";
+      } else { state = "add"; why = inOther ? "CURRENTLY IN THE OTHER LIST" : ""; }
+
+      seen[key] = true;
+      if (state === "add" || state === "noid") parsed.push(e);
+
+      var label = (state === "add" || state === "noid") ? "ADD" : "SKIP";
+      rows.push(
+        '<div class="r"><span class="tag ' + state + '">' + label + "</span>" +
+        '<span class="who">' +
+          (e.name ? '<span class="nm">' + esc(e.name) + "</span>" : "") +
+          (e.id ? '<span class="uid">' + esc(e.id) + "</span>" : "") +
+          (why ? '<span class="note">' + esc(why) + "</span>" : "") +
+        "</span></div>"
+      );
+    }
+
+    el("previewWrap").hidden = rows.length === 0;
+    el("preview").innerHTML = rows.join("");
+
+    var n = parsed.length;
+    el("addBtn").disabled = n === 0 || !token;
+    el("addHint").textContent = rows.length === 0
+      ? "AWAITING INPUT"
+      : !token ? n + " READY — AUTHORISE IN UNIT 03 TO COMMIT"
+      : n === 0 ? "NOTHING NEW TO ADD"
+      : "WILL ADD " + n + " TO " + targetSection.toUpperCase();
+  }
+
+  // ---------- registry ----------
+  function loadPublished() {
+    el("entries").innerHTML = '<div class="empty">READING REGISTRY...</div>';
+    clearMsg("listMsg");
+
+    fetch(PUBLISHED_URL + "?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(function (text) {
+        publishedEntries = [];
+        knownIds = Object.create(null);
+        knownNames = Object.create(null);
+        var section = "blacklist";
+        var generated = "";
+
+        text.split(/\r?\n/).forEach(function (raw) {
+          var line = raw.trim();
+          if (!line) return;
+          if (line.charAt(0) === "#") {
+            if (line.indexOf("# generated ") === 0) generated = line.slice(12).split(" by ")[0];
+            return;
+          }
+          if (line.charAt(0) === "[" && line.charAt(line.length - 1) === "]") {
+            section = sectionOfHeader(line);
+            return;
+          }
+          var e = parseLine(line);
+          if (!e) return;
+          e.section = section;
+          publishedEntries.push(e);
+          if (e.id) knownIds[e.id] = section;
+          if (e.name) knownNames[e.name.toLowerCase()] = section;
+        });
+
+        var banned = publishedEntries.filter(function (e) { return e.section === "blacklist"; });
+        var immune = publishedEntries.filter(function (e) { return e.section === "immune"; });
+        var withId = banned.filter(function (e) { return !!e.id; });
+
+        el("statCount").textContent = banned.length;
+        el("statWithId").textContent = withId.length + "/" + banned.length;
+        el("statImmune").textContent = immune.length;
+
+        el("listNote").textContent =
+          withId.length + " OF " + banned.length + " ENTRIES CARRY A USR ID AND SURVIVE A RENAME." +
+          (generated ? "  BUILT " + generated.toUpperCase() + "." : "");
+
+        renderEntries();
+        renderPreview();
+      })
+      .catch(function (err) {
+        describeError(err);
+        el("entries").innerHTML = '<div class="empty">REGISTRY UNREADABLE</div>';
+        el("listNote").textContent = "";
+        show("listMsg", "err", "COULD NOT READ THE PUBLISHED LIST. " + esc(err.message) +
+          (err.blocked ? "<br><br>If even this read is blocked, nothing on this page can reach GitHub at all." : "") +
+          "<br><br>Expected at <code>" + esc(PUBLISHED_URL) + "</code>");
+      });
+  }
+
+  function renderEntries() {
+    var q = el("filterBox").value.trim().toLowerCase();
+    var rows = publishedEntries
+      .filter(function (e) {
+        if (viewSection !== "all" && e.section !== viewSection) return false;
+        if (!q) return true;
+        return (e.name && e.name.toLowerCase().indexOf(q) >= 0) || (e.id && e.id.toLowerCase().indexOf(q) >= 0);
+      })
+      .map(function (e) {
+        var acts = "";
+        // A profile link exists only where the id was kept. The avatar image
+        // cannot be shown: VRChat serves it from a host this page cannot load.
+        if (e.id) {
+          acts += '<a class="lk" href="https://vrchat.com/home/user/' + encodeURIComponent(e.id) +
+            '" target="_blank" rel="noopener">PROFILE</a>';
+        }
+        if (token) {
+          acts += '<button type="button" class="act sm del" data-remove="' + esc(e.id || "") +
+            '" data-name="' + esc(e.name || "") + '">REMOVE</button>';
+        }
+        return '<div class="r' + (e.section === "immune" ? " imm" : "") + '">' +
+          '<span class="who">' +
+            '<span class="nm">' + esc(e.name || "(NO NAME)") + "</span>" +
+            (e.id ? '<span class="uid">' + esc(e.id) + "</span>" : '<span class="tag noid">NO ID</span>') +
+            (e.section === "immune" ? '<span class="tag add">IMMUNE</span>' : "") +
+            (e.note ? '<span class="note">' + esc(e.note) + "</span>" : "") +
+          "</span>" +
+          (acts ? '<span class="acts">' + acts + "</span>" : "") +
+          "</div>";
+      });
+
+    el("entries").innerHTML = rows.length ? rows.join("")
+      : '<div class="empty">' + (q ? "NO MATCH" : "REGISTRY EMPTY") + "</div>";
+  }
+
+  // ---------- github ----------
+  function describeError(err) {
+    var networkLevel = (err instanceof TypeError) ||
+      /failed to fetch|networkerror|load failed|network request failed/i.test(err.message || "");
+    if (networkLevel) {
+      err.blocked = true;
+      err.message = "The request never reached GitHub — the browser blocked it before it was sent. " +
+        "That is not a problem with your token.";
+    }
+    return err;
+  }
+
+  function gh(path, options) {
+    options = options || {};
+    options.headers = Object.assign({
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Authorization": "Bearer " + token
+    }, options.headers || {});
+    return fetch(API + path, options).catch(function (err) { throw describeError(err); }).then(function (r) {
+      if (r.status === 204) return {};
+      return r.json().catch(function () { return {}; }).then(function (body) {
+        if (!r.ok) {
+          var detail = body && body.message ? body.message : "HTTP " + r.status;
+          if (r.status === 401) detail = "GitHub rejected the token (401). It may be expired or mistyped.";
+          if (r.status === 403) detail = "Token lacks permission for this (403). " + detail;
+          if (r.status === 404) detail = "Not found (404). Check the token reaches " + OWNER + "/" + REPO + ".";
+          var e = new Error(detail);
+          e.status = r.status;
+          throw e;
+        }
+        return body;
+      });
+    });
+  }
+
+  function setConnected(on, who) {
+    el("statLink").textContent = on ? "ONLINE" : "OFFLINE";
+    el("statLink").className = "sm " + (on ? "on" : "off");
+    if (who) el("statLink").title = who;
+    renderPreview();
+    renderEntries();
+  }
+
+  function connect() {
+    var value = el("tokenBox").value.trim();
+    if (!value) { show("connMsg", "err", "PASTE A TOKEN FIRST."); return; }
+
+    token = value;
+    el("connectBtn").disabled = true;
+    show("connMsg", "info", "VERIFYING...");
+
+    // INSVRC is public, so GET /repos answers even for a token with no access to
+    // it. Reading the source file is the check that proves the Contents scope.
+    gh("/repos/" + OWNER + "/" + REPO, { method: "GET" })
+      .then(function (repo) {
+        return gh("/repos/" + OWNER + "/" + REPO + "/contents/" + encodeURI(SRC_PATH) + "?ref=" + BRANCH, { method: "GET" })
+          .then(function () { return repo; });
+      })
+      .then(function (repo) {
+        var canWrite = !!(repo.permissions && repo.permissions.push);
+        saveToken(token);
+        setConnected(true, repo.full_name);
+        if (canWrite) {
+          show("connMsg", "ok", "LINK ESTABLISHED — <b>" + esc(repo.full_name) + "</b> — WRITE AUTHORISED.");
+        } else {
+          show("connMsg", "err",
+            "READ ONLY. GitHub says this token cannot write. Set <b>Contents</b> to <b>Read and write</b>, " +
+            "not just Read. COMMIT and REMOVE will fail with 403 until then.");
+        }
+      })
+      .catch(function (err) {
+        token = "";
+        setConnected(false);
+        var hint = "";
+        if (err.blocked) hint = "";
+        else if (err.status === 404) hint = "<br><br>Usually the <b>Resource owner</b> on the token: it must be <b>" + OWNER + "</b>, and that has to be the account you were signed in as when you made it.";
+        else if (err.status === 403) hint = "<br><br>Under <b>Repository permissions</b>, set <b>Contents</b> to <b>Read and write</b>. Choosing the repository is a separate step and does not grant this on its own.";
+        else if (err.status === 401) hint = "<br><br>Check for a stray space, or issue a fresh token — they are shown only once.";
+        show("connMsg", "err", esc(err.message) + hint);
+      })
+      .then(function () { el("connectBtn").disabled = false; });
+  }
+
+  function immuneHeaderIndex(lines) {
+    for (var i = 0; i < lines.length; i++) {
+      var t = lines[i].trim().toLowerCase();
+      if (t === "[immune]" || t === "[allowlist]" || t === "[whitelist]") return i;
+    }
+    return -1;
+  }
+
+  /**
+   * blacklist: end of the blacklist section, above the comment block that
+   *   introduces [immune] rather than wedged between it and its heading.
+   * immune: end of the file, skipping back over trailing blanks.
+   * Returns -1 for immune when there is no [immune] section; caller makes one.
+   */
+  function insertionIndexFor(lines, section) {
+    var immuneAt = immuneHeaderIndex(lines);
+
+    if (section === "immune") {
+      if (immuneAt === -1) return -1;
+      var end = lines.length;
+      while (end > immuneAt + 1 && lines[end - 1].trim() === "") end--;
+      return end;
+    }
+
+    if (immuneAt === -1) return lines.length;
+    var at = immuneAt;
+    while (at > 0) {
+      var prev = lines[at - 1].trim();
+      if (prev === "" || prev.charAt(0) === "#") at--;
+      else break;
+    }
+    return at;
+  }
+
+  function addEntries() {
+    if (!parsed.length || !token) return;
+
+    var toAdd = parsed.slice();
+    var section = targetSection;
+    el("addBtn").disabled = true;
+    show("addMsg", "info", "COMMITTING " + toAdd.length + " TO " + section.toUpperCase() + "...");
+
+    gh("/repos/" + OWNER + "/" + REPO + "/contents/" + encodeURI(SRC_PATH) + "?ref=" + BRANCH, { method: "GET" })
+      .then(function (file) {
+        var text = decodeBase64(file.content);
+        var lines = text.split("\n");
+        if (lines.length && lines[lines.length - 1] === "") lines.pop();
+
+        // Re-check against the source itself, not the published copy: an entry
+        // added a minute ago may not have been rebuilt yet. Per section, since
+        // being in the other one is not a duplicate.
+        var existingIds = Object.create(null);
+        var existingNames = Object.create(null);
+        var walk = "blacklist";
+
+        lines.forEach(function (raw) {
+          var line = raw.trim();
+          if (line.charAt(0) === "[" && line.charAt(line.length - 1) === "]") { walk = sectionOfHeader(line); return; }
+          var e = parseLine(raw);
+          if (!e) return;
+          if (e.id) existingIds[e.id] = walk;
+          if (e.name) existingNames[e.name.toLowerCase()] = walk;
+        });
+
+        var fresh = toAdd.filter(function (e) {
+          if (e.id && existingIds[e.id] === section) return false;
+          if (!e.id && e.name && existingNames[e.name.toLowerCase()] === section) return false;
+          return true;
+        });
+
+        if (!fresh.length) {
+          show("addMsg", "info", "NOTHING COMMITTED — ALL OF THOSE ARE ALREADY IN " + section.toUpperCase() + ".");
+          el("addBtn").disabled = false;
+          return null;
+        }
+
+        var block = fresh.map(formatEntry);
+        var at = insertionIndexFor(lines, section);
+        if (at === -1) { block = ["", "[immune]"].concat(block); at = lines.length; }
+
+        var updated = lines.slice(0, at).concat(block, lines.slice(at)).join("\n") + "\n";
+
+        return gh("/repos/" + OWNER + "/" + REPO + "/contents/" + encodeURI(SRC_PATH), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: SLUG + ": add " + fresh.length + (fresh.length === 1 ? " entry to " : " entries to ") +
+              section + " from the control panel",
+            content: encodeBase64(updated),
+            sha: file.sha,
+            branch: BRANCH
+          })
+        }).then(function () { return fresh.length; });
+      })
+      .then(function (count) {
+        if (count === null || count === undefined) return;
+        el("pasteBox").value = "";
+        renderPreview();
+        show("addMsg", "ok", "COMMITTED " + count + " TO " + section.toUpperCase() +
+          '. Robot is resolving names — <a href="https://github.com/' + OWNER + "/" + REPO +
+          '/actions" target="_blank" rel="noopener">watch the run</a>, then press RELOAD in about a minute.');
+      })
+      .catch(function (err) {
+        var extra = "";
+        if (err.status === 409) extra = " The file changed while you were editing; press RELOAD and try again.";
+        else if (err.status === 403) extra = "<br><br>Set <b>Contents</b> to <b>Read and write</b> on the token.";
+        show("addMsg", "err", esc(err.message) + extra);
+        el("addBtn").disabled = false;
+      });
+  }
+
+  // Removing is destructive and confirm() is unreliable here, so the control
+  // arms on the first press and acts on the second.
+  var armed = null, armedTimer = 0;
+  function disarm() {
+    if (armed) { armed.classList.remove("armed"); armed.textContent = "REMOVE"; }
+    armed = null;
+    if (armedTimer) { clearTimeout(armedTimer); armedTimer = 0; }
+  }
+
+  el("entries").addEventListener("click", function (ev) {
+    var btn = ev.target.closest("button[data-remove]");
+    if (!btn) return;
+    if (armed !== btn) {
+      disarm();
+      armed = btn;
+      btn.classList.add("armed");
+      btn.textContent = "CONFIRM";
+      armedTimer = setTimeout(disarm, 4000);
+      return;
+    }
+    disarm();
+    removeEntry(btn.getAttribute("data-remove"), btn.getAttribute("data-name"));
+  });
+
+  function removeEntry(id, name) {
+    if (!token) return;
+    var label = name || id;
+    show("listMsg", "info", "REMOVING " + esc(label) + "...");
+
+    gh("/repos/" + OWNER + "/" + REPO + "/contents/" + encodeURI(SRC_PATH) + "?ref=" + BRANCH, { method: "GET" })
+      .then(function (file) {
+        var text = decodeBase64(file.content);
+        var lines = text.split("\n");
+        if (lines.length && lines[lines.length - 1] === "") lines.pop();
+
+        var removed = 0;
+        var kept = lines.filter(function (raw) {
+          var e = parseLine(raw);
+          if (!e) return true;
+          var match = id ? e.id === id : (e.name && name && e.name.toLowerCase() === name.toLowerCase());
+          if (match) { removed++; return false; }
+          return true;
+        });
+
+        if (!removed) {
+          show("listMsg", "err", "COULD NOT FIND " + esc(label) + " IN THE SOURCE. IT MAY ALREADY BE GONE — PRESS RELOAD.");
+          return null;
+        }
+
+        return gh("/repos/" + OWNER + "/" + REPO + "/contents/" + encodeURI(SRC_PATH), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: SLUG + ": remove " + label + " from the control panel",
+            content: encodeBase64(kept.join("\n") + "\n"),
+            sha: file.sha,
+            branch: BRANCH
+          })
+        }).then(function () { return label; });
+      })
+      .then(function (done) {
+        if (!done) return;
+        show("listMsg", "ok", "REMOVED <b>" + esc(done) + "</b>. LIST REBUILDS IN ABOUT A MINUTE — THEN PRESS RELOAD.");
+      })
+      .catch(function (err) {
+        var extra = err.status === 409 ? " The file changed meanwhile; press RELOAD and try again." : "";
+        show("listMsg", "err", esc(err.message) + extra);
+      });
+  }
+
+  function reRunWorkflow() {
+    if (!token) { show("listMsg", "err", "AUTHORISE IN UNIT 03 FIRST."); return; }
+    el("refreshNamesBtn").disabled = true;
+    show("listMsg", "info", "DISPATCHING RE-SCAN...");
+
+    gh("/repos/" + OWNER + "/" + REPO + "/actions/workflows/" + WORKFLOW_FILE + "/dispatches", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: BRANCH, inputs: { refresh: "true" } })
+    })
+      .then(function () {
+        show("listMsg", "ok", 'RE-SCAN RUNNING — ABOUT A MINUTE. <a href="https://github.com/' + OWNER + "/" + REPO +
+          '/actions" target="_blank" rel="noopener">watch it</a>, then press RELOAD.');
+      })
+      .catch(function (err) {
+        var hint = err.status === 403 ? " Add <b>Actions: Read and write</b> to the token for this button." : "";
+        show("listMsg", "err", esc(err.message) + hint);
+      })
+      .then(function () { el("refreshNamesBtn").disabled = false; });
+  }
+
+  // ---------- section switches ----------
+  function setTargetSection(section) {
+    targetSection = section;
+    el("segBlacklist").setAttribute("aria-pressed", String(section === "blacklist"));
+    el("segImmune").setAttribute("aria-pressed", String(section === "immune"));
+    el("sectionNote").innerHTML = section === "immune"
+      ? '<div class="msg ok">IMMUNE — these people can <b>never</b> be blacklisted, even if their name also appears on the blacklist. Immunity always wins. Put yourself and your staff here.</div>'
+      : '<div class="msg info">BLACKLIST — these people get jailed or silenced in the world. Anyone also held as immune is skipped.</div>';
+    clearMsg("addMsg");
+    renderPreview();
+  }
+
+  function setViewSection(section) {
+    viewSection = section;
+    el("viewAll").setAttribute("aria-pressed", String(section === "all"));
+    el("viewBlacklist").setAttribute("aria-pressed", String(section === "blacklist"));
+    el("viewImmune").setAttribute("aria-pressed", String(section === "immune"));
+    renderEntries();
+  }
+
+  // ---------- wiring ----------
+  el("segBlacklist").addEventListener("click", function () { setTargetSection("blacklist"); });
+  el("segImmune").addEventListener("click", function () { setTargetSection("immune"); });
+  el("viewAll").addEventListener("click", function () { setViewSection("all"); });
+  el("viewBlacklist").addEventListener("click", function () { setViewSection("blacklist"); });
+  el("viewImmune").addEventListener("click", function () { setViewSection("immune"); });
+
+  el("pasteBox").addEventListener("input", renderPreview);
+  el("filterBox").addEventListener("input", renderEntries);
+  el("addBtn").addEventListener("click", addEntries);
+  el("reloadBtn").addEventListener("click", loadPublished);
+  el("refreshNamesBtn").addEventListener("click", reRunWorkflow);
+  el("connectBtn").addEventListener("click", connect);
+  el("clearBtn").addEventListener("click", function () {
+    el("pasteBox").value = "";
+    clearMsg("addMsg");
+    renderPreview();
+  });
+  el("forgetBtn").addEventListener("click", function () {
+    dropToken();
+    token = "";
+    el("tokenBox").value = "";
+    setConnected(false);
+    show("connMsg", "info", "TOKEN FORGOTTEN ON THIS DEVICE.");
+  });
+  el("tokenBox").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); connect(); }
+  });
+
+  // ---------- boot ----------
+  el("kUnit").textContent = INFO.label;
+  el("scopeName").textContent = INFO.label;
+  el("footSrc").textContent = SRC_PATH;
+
+  if (INFO.other) {
+    var otherInfo = LISTS[INFO.other];
+    el("jumpLabel").textContent = otherInfo ? otherInfo.label : INFO.other.toUpperCase();
+    el("jumpOther").href = PAGES + DIR.replace(/[^\/]+$/, INFO.other) + "/controlpanel.html";
+  } else {
+    el("jumpOther").hidden = true;
+  }
+
+  setTargetSection("blacklist");
+  setViewSection("all");
+  setConnected(false);
+  loadPublished();
+
+  var saved = loadToken();
+  if (saved) { el("tokenBox").value = saved; connect(); }
+})();
+</script>
+</body>
+</html>

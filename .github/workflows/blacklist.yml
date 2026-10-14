@@ -17,9 +17,11 @@
 # rename: the usr_ id never changes, so the next run picks up the new display
 # name and the list repairs itself without you doing anything.
 #
-# The published list is Paradise/paradise_central_control/global_blacklist.txt.
-# It is generated: never edit it by hand, your change would be overwritten on
-# the next run. Everything you type goes in sources/global_blacklist.src.
+# Each list lives in its own folder under Paradise/paradise_central_control/:
+#   blacklist_global_community/  and  blacklist_global_branch/
+# Each has its own sources/global_blacklist.src (edit this), global_blacklist.txt
+# (generated, never edit), known_users.json, and controlpanel.html. They are
+# managed completely separately; one does not affect the other.
 
 name: Build blacklist
 
@@ -27,7 +29,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "Paradise/paradise_central_control/sources/**"
+      - "Paradise/paradise_central_control/blacklist_global_*/sources/**"
       - ".github/workflows/blacklist.yml"
       - "tools/build_blacklist.py"
   schedule:
@@ -67,29 +69,38 @@ jobs:
       - name: Self test
         run: python3 tools/build_blacklist.py --selftest
 
-      - name: Compile list
+      # Each list is built on its own, with its own source, its own output and
+      # its own name cache. They share only this workflow and the tool; adding
+      # another list later means creating the folder, nothing here.
+      - name: Compile every list
         env:
           BLACKLIST_SALT: ${{ secrets.BLACKLIST_SALT }}
           VRC_USER_AGENT: "ParadiseBlacklistBuilder/3.0 (+https://github.com/yukariyumevrc-beep/INSVRC)"
           REFRESH: ${{ github.event_name == 'schedule' || inputs.refresh }}
         run: |
-          cd Paradise/paradise_central_control
-          ARGS="--src sources/global_blacklist.src \
-                --out global_blacklist.txt \
-                --cache known_users.json \
-                --resolve \
-                --write-src"
-          if [ "$REFRESH" = "true" ]; then ARGS="$ARGS --refresh"; fi
-          python3 ../../tools/build_blacklist.py $ARGS
+          set -e
+          root="$PWD"
+          for dir in Paradise/paradise_central_control/blacklist_global_*/; do
+            [ -f "$dir/sources/global_blacklist.src" ] || { echo "skipping $dir — no source"; continue; }
+            echo "::group::$dir"
+            (
+              cd "$dir"
+              ARGS="--src sources/global_blacklist.src \
+                    --out global_blacklist.txt \
+                    --cache known_users.json \
+                    --resolve \
+                    --write-src"
+              if [ "$REFRESH" = "true" ]; then ARGS="$ARGS --refresh"; fi
+              python3 "$root/tools/build_blacklist.py" $ARGS
+            )
+            echo "::endgroup::"
+          done
 
       - name: Commit the result
         run: |
           git config user.name "blacklist-bot"
           git config user.email "blacklist-bot@users.noreply.github.com"
-          git add -A \
-            Paradise/paradise_central_control/sources \
-            Paradise/paradise_central_control/global_blacklist.txt \
-            Paradise/paradise_central_control/known_users.json
+          git add -A Paradise/paradise_central_control/blacklist_global_*
           if git diff --cached --quiet; then
             echo "nothing changed"
             exit 0

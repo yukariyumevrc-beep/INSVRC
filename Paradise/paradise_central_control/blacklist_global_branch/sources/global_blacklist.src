@@ -1,0 +1,29 @@
+# NEW GEN BLACKLIST V3 — BRANCH LIST
+#
+# This list is managed on its own, separately from the community list.
+# Nothing here affects blacklist_global_community and nothing there affects this.
+#
+# EDIT THIS FILE ONLY. The published list beside it is generated.
+# Easiest way in: the control panel next to this folder.
+#
+# TO ADD SOMEONE: paste their profile link on its own line under [blacklist].
+#   https://vrchat.com/home/user/usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx | why, and the date
+# Commit, wait about a minute, and the robot fills in their display name by
+# reading their public profile. No login needed.
+#
+# ALWAYS PASTE THE LINK, NOT JUST A NAME. The usr_ id is the only thing that
+# survives a rename: every id is re-read every 3 hours, so somebody who renames
+# to dodge the list puts themselves back on it. A name-only line is a line they
+# escape by changing their name.
+#
+# TO REMOVE SOMEONE: delete their line.
+
+[blacklist]
+
+# Empty on purpose. This branch starts with nobody on it.
+
+
+# Nobody here can ever be blacklisted, even if their name also appears above.
+# This is what stops a mistake from locking you out of your own world.
+[immune]
+usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | 《ＳＡＩＮＴ》
