@@ -1,32 +1,10 @@
-# NEW GEN BLACKLIST V3 - SOURCE list
-#
-# THIS is the only file you edit. Edit it right here in GitHub's web editor.
-# The published list the world downloads is generated from it.
-#
-# TO ADD SOMEONE: paste their profile link on its own line under [blacklist].
-#   https://vrchat.com/home/user/usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx | why, and the date
-# Commit, wait about a minute, and the bot rewrites your line to add their
-# display name, which it reads off their public profile page. No login needed.
-#
-# ALWAYS PASTE THE LINK, NOT JUST A NAME. The usr_ id is the only thing that
-# survives a rename. The bot re-reads every id every 6 hours, so someone who
-# renames to dodge the list gets put back on it by themselves. A name-only line
-# is a line they escape by changing their name.
-#
-# TO REMOVE SOMEONE: delete their line.
-
 [blacklist]
 
-# ---- name only, no profile link yet ----
-# A rename defeats these. Next time one of them turns up, grab their profile
-# link and paste it onto their line so the robot can track them by id.
 KIKIKIKI7397 3d5d
 RossoWhero
 KasugiGamer
 IntrovertNight
 Wireder
-
-# ---- added 2026-10-11 from profile links ----
 usr_bcbbb9f6-3b09-4617-b43e-518a1e473270 | kawinkhwylek 3270
 usr_b7fdd154-27b8-4a3c-a392-8e3faa5c62f1 | KIKIKIKI7397
 usr_bc21db1e-51e8-409c-89f0-a8ffe9c88390 | kikikiki7397 8390
@@ -44,9 +22,8 @@ usr_cd411b24-56d5-4f06-947e-f0ec78dadfd0 | Titaria
 usr_78ea8a02-e626-4cb1-b039-76782aced8a4 | MilkuMilk
 usr_0f4893fe-bbb8-4f15-8677-9a45bd19b68b | 【Shion-Yasashi】
 
-# Nobody here can ever be blacklisted, even if their name also appears above.
-# This is what stops a mistake from locking you out of your own world.
 [immune]
+
 usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | 《ＳＡＩＮＴ》
 usr_832851e1-4364-4369-b2cb-c0715d40ca64 | Yukari Yume
 usr_182f9a2f-fbc1-4747-b9a3-8a5e5f933a21 | CHERRY_IRIS
