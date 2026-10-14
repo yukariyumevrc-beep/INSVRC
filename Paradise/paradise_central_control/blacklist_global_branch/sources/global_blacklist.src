@@ -1,28 +1,5 @@
-# NEW GEN BLACKLIST V3 — BRANCH LIST
-#
-# This list is managed on its own, separately from the community list.
-# Nothing here affects blacklist_global_community and nothing there affects this.
-#
-# EDIT THIS FILE ONLY. The published list beside it is generated.
-# Easiest way in: the control panel next to this folder.
-#
-# TO ADD SOMEONE: paste their profile link on its own line under [blacklist].
-#   https://vrchat.com/home/user/usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx | why, and the date
-# Commit, wait about a minute, and the robot fills in their display name by
-# reading their public profile. No login needed.
-#
-# ALWAYS PASTE THE LINK, NOT JUST A NAME. The usr_ id is the only thing that
-# survives a rename: every id is re-read every 3 hours, so somebody who renames
-# to dodge the list puts themselves back on it. A name-only line is a line they
-# escape by changing their name.
-#
-# TO REMOVE SOMEONE: delete their line.
-
 [blacklist]
 
-# ---- cloned from blacklist_global_community on 2026-10-14 ----
-# A one-time copy. From here the two lists are independent: anything added or
-# removed on either side stays on that side.
 KIKIKIKI7397 3d5d
 RossoWhero
 KasugiGamer
@@ -44,14 +21,10 @@ usr_e2ce60b0-a860-4d38-8fd1-0c10408c9300 | LeMon［X］ziCute 9300
 usr_cd411b24-56d5-4f06-947e-f0ec78dadfd0 | Titaria
 usr_78ea8a02-e626-4cb1-b039-76782aced8a4 | MilkuMilk
 usr_0f4893fe-bbb8-4f15-8677-9a45bd19b68b | 【Shion-Yasashi】
-
-# ---- added here ----
 usr_d451c993-f91e-451e-83e4-35258cae671a | -VinZen-
 
-
-# Nobody here can ever be blacklisted, even if their name also appears above.
-# This is what stops a mistake from locking you out of your own world.
 [immune]
+
 usr_1a0ea4fe-404a-4b46-be0e-4d0fe5aa9ce9 | 《ＳＡＩＮＴ》
 usr_832851e1-4364-4369-b2cb-c0715d40ca64 | Yukari Yume
 usr_394faa73-e814-4c44-a1da-1fd35af6bd72 | -- ᴀɪᴍɪ --
