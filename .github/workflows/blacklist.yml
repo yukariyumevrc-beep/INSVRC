@@ -80,8 +80,11 @@ jobs:
         run: |
           set -e
           root="$PWD"
+          : > "$RUNNER_TEMP/summaries.txt"
+
           for dir in Paradise/paradise_central_control/blacklist_global_*/; do
             [ -f "$dir/sources/global_blacklist.src" ] || { echo "skipping $dir — no source"; continue; }
+            name=$(basename "$dir" | sed 's/^blacklist_global_//')
             echo "::group::$dir"
             (
               cd "$dir"
@@ -89,10 +92,17 @@ jobs:
                     --out global_blacklist.txt \
                     --cache known_users.json \
                     --resolve \
-                    --write-src"
+                    --write-src \
+                    --summary-out $RUNNER_TEMP/one.txt"
               if [ "$REFRESH" = "true" ]; then ARGS="$ARGS --refresh"; fi
               python3 "$root/tools/build_blacklist.py" $ARGS
             )
+            # Whatever this list detected goes into the commit message, so the
+            # record of what changed outlives the Actions log.
+            if [ -s "$RUNNER_TEMP/one.txt" ]; then
+              echo "$name: $(cat "$RUNNER_TEMP/one.txt")" >> "$RUNNER_TEMP/summaries.txt"
+            fi
+            rm -f "$RUNNER_TEMP/one.txt"
             echo "::endgroup::"
           done
 
@@ -106,7 +116,15 @@ jobs:
             exit 0
           fi
 
-          git commit -m "blacklist: resolve names and rebuild list [skip ci]"
+          if [ -s "$RUNNER_TEMP/summaries.txt" ]; then
+            SUBJECT="blacklist: $(paste -sd'; ' "$RUNNER_TEMP/summaries.txt")"
+          else
+            SUBJECT="blacklist: rebuild, no name changes detected"
+          fi
+          # git subjects want to stay short; the detail is already in the body.
+          SUBJECT=$(printf '%s' "$SUBJECT" | cut -c1-150)
+
+          git commit -m "$SUBJECT [skip ci]"
 
           # A queued run checks out the commit it was created on, so by the time
           # it gets here main may already carry another run's result and the push

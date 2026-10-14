@@ -311,9 +311,17 @@ def apply_cache(entries, cache):
 
 
 def resolve_names(entries, cache, delay, refresh):
-    """Fills in names the cache could not, by reading each public profile page."""
+    """
+    Fills in names the cache could not, by reading each public profile page.
+
+    Also reports what it found, so the commit message can say what the run
+    actually did instead of "rebuild list" every time. The Actions log scrolls
+    away; a commit message is the one record that stays.
+    """
     resolved = 0
     api_calls = 0
+    renames = []
+    first_time = []
 
     for entry in entries:
         if not entry.user_id:
@@ -332,11 +340,34 @@ def resolve_names(entries, cache, delay, refresh):
 
         if entry.name and entry.name != name:
             print("  %s renamed: %r -> %r" % (entry.user_id, entry.name, name))
+            renames.append((entry.name, name))
+        elif not entry.name:
+            first_time.append(name)
+
         entry.name = name
         cache[entry.user_id] = name
         resolved += 1
 
-    return resolved, api_calls
+    return resolved, api_calls, renames, first_time
+
+
+def summarise(renames, first_time):
+    """One short line for the commit message. Empty when nothing happened."""
+    parts = []
+
+    if renames:
+        shown = ", ".join("%s -> %s" % (old, new) for old, new in renames[:3])
+        if len(renames) > 3:
+            shown += ", +%d more" % (len(renames) - 3)
+        parts.append("%d rename%s (%s)" % (len(renames), "" if len(renames) == 1 else "s", shown))
+
+    if first_time:
+        shown = ", ".join(first_time[:3])
+        if len(first_time) > 3:
+            shown += ", +%d more" % (len(first_time) - 3)
+        parts.append("%d name%s resolved (%s)" % (len(first_time), "" if len(first_time) == 1 else "s", shown))
+
+    return "; ".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -797,6 +828,11 @@ def main():
     parser.add_argument("--resolve", action="store_true", help="look up missing display names from public profile pages")
     parser.add_argument("--refresh", action="store_true", help="re-check every id, catching griefers who renamed")
     parser.add_argument(
+        "--summary-out",
+        default="",
+        help="write a one-line description of what this run detected, for the commit message",
+    )
+    parser.add_argument(
         "--write-src",
         action="store_true",
         help="write resolved names back into the source file, so a pasted id becomes 'usr_... | Name'",
@@ -815,14 +851,22 @@ def main():
     for problem in problems:
         print("skipped: " + problem, file=sys.stderr)
 
+    summary = ""
     cache = load_cache(args.cache)
     filled = apply_cache(entries, cache)
     if filled:
         print("filled %d name(s) from the local cache" % filled)
 
     if args.resolve or args.refresh:
-        resolved, api_calls = resolve_names(entries, cache, args.delay, args.refresh)
+        resolved, api_calls, renames, first_time = resolve_names(entries, cache, args.delay, args.refresh)
         print("resolved %d name(s) from public profile pages (%d request(s))" % (resolved, api_calls))
+        summary = summarise(renames, first_time)
+
+    if args.summary_out:
+        with open(args.summary_out, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(summary + "\n" if summary else "")
+        if summary:
+            print("summary: " + summary)
 
     entries, merged = merge_duplicate_names(entries)
     if merged:

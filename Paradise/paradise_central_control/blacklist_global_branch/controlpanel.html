@@ -21,10 +21,16 @@
     --fg:     #EAEAEA;   /* white phosphor */
     --dim:    #8A8A8A;
     --faint:  #5A5A5A;
-    --red:    #E61919;   /* aviation hazard — the only accent */
+    --red:    #E61919;   /* error, destructive, offline — always red */
+    --accent: #E61919;   /* scope colour: red for community, overridden per list */
     --green:  #4AF626;   /* armed indicator ONLY */
     color-scheme: dark;
   }
+
+  /* The branch list runs on its own channel, so it gets its own colour.
+     Error red is deliberately left alone: a failure must read as a failure
+     on both panels. */
+  :root[data-scope="branch"] { --accent: #2E9BD6; }
 
   * { box-sizing: border-box; border-radius: 0 !important; }
 
@@ -65,7 +71,7 @@
     line-height: .88; letter-spacing: -.04em; text-transform: uppercase;
     margin: 0; text-wrap: balance;
   }
-  h1 .mark { color: var(--red); }
+  h1 .mark { color: var(--accent); }
 
   .scope {
     margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px 16px;
@@ -73,11 +79,11 @@
   }
   .scope-id {
     font-size: 12px; letter-spacing: .14em; color: var(--fg);
-    border-left: 3px solid var(--red); padding-left: 10px;
+    border-left: 3px solid var(--accent); padding-left: 10px;
   }
-  .scope-id b { color: var(--red); font-weight: 700; }
+  .scope-id b { color: var(--accent); font-weight: 700; }
   a.jump { color: var(--dim); font-size: 11px; letter-spacing: .12em; text-decoration: none; border-bottom: 1px solid var(--line); }
-  a.jump:hover { color: var(--fg); border-color: var(--red); }
+  a.jump:hover { color: var(--fg); border-color: var(--accent); }
 
   /* ---------- telemetry strip ---------- */
   .telemetry {
@@ -102,7 +108,7 @@
     padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--panel2);
   }
   .unit-head h2 { font-size: 11px; letter-spacing: .18em; margin: 0; color: var(--fg); font-weight: 700; }
-  .unit-head h2 i { color: var(--red); font-style: normal; }
+  .unit-head h2 i { color: var(--accent); font-style: normal; }
   .unit-body { padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; }
 
   /* ---------- controls ---------- */
@@ -114,7 +120,7 @@
   }
   .seg button:last-child { border-right: 0; }
   .seg button:hover:not([aria-pressed="true"]) { color: var(--fg); }
-  .seg button[aria-pressed="true"] { background: var(--red); color: #fff; font-weight: 700; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 700; }
   .seg button.alt[aria-pressed="true"] { background: var(--fg); color: var(--sub); }
 
   label.field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
@@ -126,7 +132,7 @@
   }
   textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
   :is(textarea, input)::placeholder { color: var(--faint); }
-  :is(textarea, input):focus-visible { outline: 2px solid var(--red); outline-offset: -1px; }
+  :is(textarea, input):focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
 
   button.act {
     font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .14em;
@@ -135,8 +141,8 @@
   }
   button.act:hover:not(:disabled) { border-color: var(--fg); }
   button.act:disabled { opacity: .35; cursor: not-allowed; }
-  button.act:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
-  button.act.go { background: var(--red); border-color: var(--red); color: #fff; }
+  button.act:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.act.go { background: var(--accent); border-color: var(--accent); color: #fff; }
   button.act.sm { font-size: 10px; padding: 6px 11px; letter-spacing: .12em; }
 
   .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -186,10 +192,10 @@
   details.doc { border-top: 1px solid var(--line); }
   details.doc > summary { padding: 11px 14px; cursor: pointer; font-size: 10px; letter-spacing: .16em; color: var(--dim); }
   details.doc > summary:hover { color: var(--fg); }
-  details.doc > summary:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
+  details.doc > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   ol.steps { margin: 0; padding-left: 18px; font-size: 12px; color: var(--dim); line-height: 1.8; }
   ol.steps b { color: var(--fg); }
-  ol.steps a { color: var(--red); }
+  ol.steps a { color: var(--accent); }
 
   footer { border: 1px solid var(--line); border-top: 0; padding: 12px 14px; }
 
@@ -275,9 +281,25 @@
     </div>
   </section>
 
-  <!-- ============ 03 AUTH ============ -->
+  <!-- ============ 03 ACTIVITY ============ -->
   <section class="unit">
-    <div class="unit-head"><h2><i>[</i> 03 / AUTHORISATION <i>]</i></h2></div>
+    <div class="unit-head">
+      <h2><i>[</i> 03 / ACTIVITY LOG <i>]</i></h2>
+      <div class="row">
+        <span class="note-s">LAST ROBOT RUN &nbsp;<b id="lastRun" style="color:var(--fg)">—</b></span>
+        <button class="act sm" id="logBtn" type="button">REFRESH</button>
+      </div>
+    </div>
+    <div class="unit-body">
+      <div class="rows scroll" id="activity"><div class="empty">READING LOG...</div></div>
+      <p class="note-s">EVERY CHANGE TO THIS LIST, WHO MADE IT AND WHEN. READ STRAIGHT FROM THE COMMIT HISTORY OF THIS FOLDER, SO IT OUTLIVES THE ACTIONS LOG.</p>
+      <div id="logMsg"></div>
+    </div>
+  </section>
+
+  <!-- ============ 04 AUTH ============ -->
+  <section class="unit">
+    <div class="unit-head"><h2><i>[</i> 04 / AUTHORISATION <i>]</i></h2></div>
     <div class="unit-body">
       <div id="connMsg"></div>
       <label class="field" for="tokenBox">
@@ -642,6 +664,7 @@
         var canWrite = !!(repo.permissions && repo.permissions.push);
         saveToken(token);
         setConnected(true, repo.full_name);
+        loadActivity();
         if (canWrite) {
           show("connMsg", "ok", "LINK ESTABLISHED — <b>" + esc(repo.full_name) + "</b> — WRITE AUTHORISED.");
         } else {
@@ -865,6 +888,83 @@
       .then(function () { el("refreshNamesBtn").disabled = false; });
   }
 
+  // ---------- activity log ----------
+  // Read from the commit history of this folder. Commits are the one record
+  // that survives: the Actions log scrolls away, and a commit carries who did
+  // it, when, and — since the robot now writes what it detected into the
+  // subject — what actually changed.
+  function ago(iso) {
+    var secs = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+    if (secs < 90) return "JUST NOW";
+    var mins = secs / 60;
+    if (mins < 60) return Math.round(mins) + "M AGO";
+    var hours = mins / 60;
+    if (hours < 48) return Math.round(hours) + "H AGO";
+    return Math.round(hours / 24) + "D AGO";
+  }
+
+  function classify(subject) {
+    var s = subject.toLowerCase();
+    if (/^blacklist:/.test(s)) return { tag: "ROBOT", cls: "add" };
+    if (/\bremove\b/.test(s)) return { tag: "REMOVE", cls: "bad" };
+    if (/\badd\b/.test(s)) return { tag: "ADD", cls: "noid" };
+    return { tag: "EDIT", cls: "dup" };
+  }
+
+  function loadActivity() {
+    el("activity").innerHTML = '<div class="empty">READING LOG...</div>';
+    clearMsg("logMsg");
+
+    var url = API + "/repos/" + OWNER + "/" + REPO + "/commits?per_page=14&path=" + encodeURIComponent(DIR);
+    var headers = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+    // Signed-in requests get a far higher rate limit, but this works without one.
+    if (token) headers.Authorization = "Bearer " + token;
+
+    fetch(url, { headers: headers })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status === 403 ? "GitHub rate limit reached — authorise in unit 04, or wait." : "HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (commits) {
+        if (!commits.length) {
+          el("activity").innerHTML = '<div class="empty">NO HISTORY FOR THIS LIST YET</div>';
+          el("lastRun").textContent = "NEVER";
+          return;
+        }
+
+        var lastRobot = null;
+        var rows = commits.map(function (c) {
+          var subject = (c.commit.message || "").split("\n")[0];
+          var when = c.commit.author ? c.commit.author.date : "";
+          var who = (c.author && c.author.login) || (c.commit.author && c.commit.author.name) || "unknown";
+          var kind = classify(subject);
+          if (kind.tag === "ROBOT" && !lastRobot) lastRobot = when;
+
+          // Drop the leading "blacklist:" / "community:" label; the tag says it.
+          var text = subject.replace(/^[a-z_]+:\s*/i, "").replace(/\s*\[skip ci\]\s*$/i, "");
+
+          return '<div class="r">' +
+            '<span class="tag ' + kind.cls + '">' + kind.tag + "</span>" +
+            '<span class="who">' +
+              '<span class="nm">' + esc(text) + "</span>" +
+              '<span class="uid">' + esc(who) + " &nbsp;///&nbsp; " + (when ? ago(when) : "?") + "</span>" +
+            "</span>" +
+            '<span class="acts"><a class="lk" href="https://github.com/' + OWNER + "/" + REPO +
+              "/commit/" + esc(c.sha) + '" target="_blank" rel="noopener">DIFF</a></span>' +
+            "</div>";
+        });
+
+        el("activity").innerHTML = rows.join("");
+        el("lastRun").textContent = lastRobot ? ago(lastRobot) : "NOT IN THE LAST 14 CHANGES";
+      })
+      .catch(function (err) {
+        describeError(err);
+        el("activity").innerHTML = '<div class="empty">LOG UNREADABLE</div>';
+        el("lastRun").textContent = "—";
+        show("logMsg", "err", esc(err.message));
+      });
+  }
+
   // ---------- section switches ----------
   function setTargetSection(section) {
     targetSection = section;
@@ -896,6 +996,7 @@
   el("filterBox").addEventListener("input", renderEntries);
   el("addBtn").addEventListener("click", addEntries);
   el("reloadBtn").addEventListener("click", loadPublished);
+  el("logBtn").addEventListener("click", loadActivity);
   el("refreshNamesBtn").addEventListener("click", reRunWorkflow);
   el("connectBtn").addEventListener("click", connect);
   el("clearBtn").addEventListener("click", function () {
@@ -915,6 +1016,10 @@
   });
 
   // ---------- boot ----------
+  // Scope colour comes from which folder this copy sits in, same as everything
+  // else about it, so the two panels can never end up wearing each other.
+  document.documentElement.setAttribute("data-scope", SLUG === "blacklist_global_branch" ? "branch" : "community");
+
   el("kUnit").textContent = INFO.label;
   el("scopeName").textContent = INFO.label;
   el("footSrc").textContent = SRC_PATH;
@@ -931,6 +1036,7 @@
   setViewSection("all");
   setConnected(false);
   loadPublished();
+  loadActivity();
 
   var saved = loadToken();
   if (saved) { el("tokenBox").value = saved; connect(); }
