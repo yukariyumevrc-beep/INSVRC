@@ -1,5 +1,13 @@
+# Udon test - one name per line, exactly as the VRChat display name
+# [ROLE] lines choose the object for the names below them (must match roles[] in RoleObjectTracker)
+
+[VIP]
 《ＳＡＩＮＴ》
 cookie․exe
 Tomokisan
 PADA․
 ༒SҽԃYσɾZ༒
+
+[STAFF]
+《ＳＡＩＮＴ》
+cookie․exe
