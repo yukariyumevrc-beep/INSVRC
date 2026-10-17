@@ -16,7 +16,7 @@ using UnityEngine.Networking;
 public static class ParadiseUpdater
 {
     private const string RawBase =
-        "https://raw.githubusercontent.com/yukariyumevrc-beep/INSVRC/main/unity/";
+        "https://raw.githubusercontent.com/yukariyumevrc-beep/INSVRC/main/tools/unity/";
 
     // พาธใน repo  ->  พาธในโปรเจกต์ (เทียบจากโฟลเดอร์ URLGallery)
     private static readonly string[] Files = new string[]
