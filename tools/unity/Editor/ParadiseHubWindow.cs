@@ -18,6 +18,8 @@ public class ParadiseHubWindow : EditorWindow
 {
     private const string OPT  = "Tools/Paradise Tool/World Optimizer/";
     private const string POOL = "Window/StardustV1/ObjectPoolScript";
+    private const string BL   = "Tools/Paradise System/Blacklist V3/";
+    private const string ENT  = "Paradise/Entrance System/";
 
     private Vector2 _scroll;
     private string  _status = "";
@@ -124,6 +126,46 @@ public class ParadiseHubWindow : EditorWindow
         {
             ParadiseUpdater.UpdateFromGitHub();
         }
+        EndSection();
+
+        // ---------- Blacklist V3 ----------
+        Section("Blacklist V3", Has(BL + "Create prefab"));
+        MenuButton("สร้าง Prefab (ครั้งแรกต้องกดสองรอบ)", BL + "Create prefab");
+
+        EditorGUILayout.Space(2);
+        MenuButton("Control Panel — Community", BL + "Control panel - Community");
+        MenuButton("Control Panel — Branch",    BL + "Control panel - Branch");
+
+        EditorGUILayout.Space(2);
+        MenuButton("ดูลิสต์ที่เผยแพร่ — Community",   BL + "Published list - Community");
+        MenuButton("ดูลิสต์ที่เผยแพร่ — Branch",      BL + "Published list - Branch");
+        MenuButton("ดูรอบที่บอทรัน (GitHub Actions)", BL + "Robot runs on GitHub");
+        EndSection();
+
+        // ---------- Entrance System ----------
+        Section("Entrance System", HasAny(ENT + "Create Entrance System",
+                                          ENT + "Select Console"));
+        MenuButton("สร้างระบบใหม่ (role / bouncer / avatar zone)",
+                   ENT + "Create Entrance System");
+        MenuButton("เปิด Entrance Console (ตั้งค่าทุกอย่างที่นี่)",
+                   ENT + "Select Console");
+        MenuButton("Rebuild ตัวที่เลือกอยู่", ENT + "Rebuild Selected");
+        MenuButton("ซ่อม Program Asset",      ENT + "Repair Program Assets");
+        EndSection();
+
+        // ---------- UI Builder ----------
+        Section("UI Builder", HasAny("Paradise/UI Builder", "Paradise/Pool Builder"));
+        MenuButton("UI Builder (แผงปุ่ม / toggle / slider)", "Paradise/UI Builder");
+        MenuButton("Pool Builder",                            "Paradise/Pool Builder");
+        MenuButton("Refresh Global Sync", "Paradise/UI Builder Tools/Refresh Global Sync");
+        MenuButton("Regenerate Starter Sounds",
+                   "Paradise/UI Builder Tools/Regenerate Starter Sounds");
+        EndSection();
+
+        // ---------- World Analysis ----------
+        Section("World Analysis", Has("Paradise/World Interaction Map"));
+        MenuButton("World Interaction Map (แผนผัง Interact / Trigger / Toggle)",
+                   "Paradise/World Interaction Map");
         EndSection();
 
         // ---------- World Optimizer (เดิมคือ Paradise Tool) ----------
