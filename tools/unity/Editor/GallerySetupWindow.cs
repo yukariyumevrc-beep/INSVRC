@@ -24,6 +24,9 @@ public class GallerySetupWindow : EditorWindow
         "GoldenAge นอน",  "Paradise/golden-age/Gallery/goldenage_wide",
         "YakiBar ตั้ง",   "Paradise/Yaki/Gallery/yakibar_vertical",
         "Yaki สตาฟ ตั้ง", "Paradise/Yaki/Gallery/staff_vertical",
+        "BP สตาฟ",        "Paradise/BlackPaw/Gallery/staff_vertical",
+        "BP โปรโมท",      "Paradise/BlackPaw/Gallery/promote_vertical",
+        "BP อีเวนต์",       "Paradise/BlackPaw/Gallery/event_vertical",
         "Partner ตั้ง",   GalleryDir + "Partner/partner_vertical",
         "Partner นอน",    GalleryDir + "Partner/partner_wide",
     };
