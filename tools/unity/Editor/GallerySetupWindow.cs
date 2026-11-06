@@ -27,6 +27,8 @@ public class GallerySetupWindow : EditorWindow
         "BP สตาฟ",        "Paradise/BlackPaw/Gallery/staff_vertical",
         "BP โปรโมท",      "Paradise/BlackPaw/Gallery/promote_vertical",
         "BP อีเวนต์",       "Paradise/BlackPaw/Gallery/event_vertical",
+        "APEX ตั้ง",       "Paradise/no_paradise_contorl/APEX/Gallery/apex_vertical",
+        "APEX นอน",        "Paradise/no_paradise_contorl/APEX/Gallery/apex_wide",
         "Partner ตั้ง",   GalleryDir + "Partner/partner_vertical",
         "Partner นอน",    GalleryDir + "Partner/partner_wide",
     };
