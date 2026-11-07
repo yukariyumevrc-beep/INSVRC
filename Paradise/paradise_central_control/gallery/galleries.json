@@ -10,6 +10,8 @@
     { "name": "BlackPaw — สตาฟ",        "path": "../../BlackPaw/Gallery/staff_vertical" },
     { "name": "BlackPaw — โปรโมท",      "path": "../../BlackPaw/Gallery/promote_vertical" },
     { "name": "BlackPaw — อีเวนต์",      "path": "../../BlackPaw/Gallery/event_vertical" },
+    { "name": "APEX — แนวตั้ง",          "path": "../../no_paradise_contorl/APEX/Gallery/apex_vertical" },
+    { "name": "APEX — แนวนอน",          "path": "../../no_paradise_contorl/APEX/Gallery/apex_wide" },
     { "name": "Partner — แนวตั้ง",       "path": "Partner/partner_vertical" },
     { "name": "Partner — แนวนอน",       "path": "Partner/partner_wide" }
   ]
