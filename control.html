@@ -86,9 +86,10 @@ hr{border:none;border-top:1px solid var(--line)}
 .unit .badge{position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:9px;letter-spacing:.14em;padding:3px 7px}
 
 /* ---- gate ---- */
-#gate{position:fixed;inset:0;z-index:8000;background:rgba(10,10,10,.96);display:none;align-items:center;justify-content:center;padding:20px}
-#gate.show{display:flex}
+#gate,#tok{position:fixed;inset:0;z-index:8000;background:rgba(10,10,10,.96);display:none;align-items:center;justify-content:center;padding:20px;overflow:auto}
+#gate.show,#tok.show{display:flex}
 .gatebox{border:2px solid var(--fg);background:var(--bg);width:100%;max-width:460px}
+#tok .gatebox{max-width:560px}
 .gatebox .top{border-bottom:1px solid var(--line);padding:11px 16px;display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
 .gatebox .body{padding:28px 24px 24px}
 .gatebox h2{font-family:var(--macro);font-size:clamp(1.6rem,5vw,2.4rem);line-height:.92;letter-spacing:-.03em;text-transform:uppercase;margin-bottom:6px}
@@ -175,6 +176,37 @@ hr{border:none;border-top:1px solid var(--line)}
 /* footer */
 .foot{border-top:1px solid var(--line);margin-top:48px;padding:20px 0 40px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
 
+/* ---- auth + editor ---- */
+.mast .cell.act{cursor:pointer}
+.mast .cell.act:hover{background:var(--panel2)}
+.mast .cell.act:hover b{color:var(--red)}
+#mAuth.rw{color:var(--green)}
+
+#tokIn{width:100%;border:1px solid var(--line2);background:var(--panel);padding:12px;font-size:12px;letter-spacing:.02em;color:var(--fg);word-break:break-all}
+#tokIn:focus{outline:none;border-color:var(--fg)}
+.help{font-size:10px;line-height:1.7;letter-spacing:.06em;color:var(--dim);margin:16px 0 0;border-top:1px solid var(--line);padding-top:14px}
+.help b{color:var(--fg);font-weight:400}
+.help code{background:var(--panel2);padding:1px 5px;color:var(--fg)}
+.help a{color:var(--red);text-decoration:underline}
+.help ol{margin:8px 0 0 16px}
+.help li{margin-bottom:5px}
+.warnbox{border:1px solid var(--red);border-left-width:4px;padding:10px 13px;margin-top:14px;font-size:10px;line-height:1.7;letter-spacing:.06em;color:var(--dim)}
+.warnbox b{color:var(--red);font-weight:400}
+
+.savebar{border-bottom:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel)}
+#cmsg{flex:1;min-width:170px;border:1px solid var(--line2);background:var(--bg);padding:6px 10px;font-size:11px;letter-spacing:.06em}
+#cmsg:focus{outline:none;border-color:var(--fg)}
+.twin{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);cursor:pointer;white-space:nowrap}
+.twin input{appearance:none;width:13px;height:13px;border:1px solid var(--line2);background:var(--bg);cursor:pointer;position:relative;flex:none}
+.twin input:checked{background:var(--red);border-color:var(--red)}
+.twin input:checked::after{content:"";position:absolute;left:3px;top:0;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg)}
+.editor{display:block;width:100%;height:100%;min-height:320px;background:var(--panel);border:none;padding:12px 14px;color:var(--fg);font-family:var(--mono);font-size:12.5px;line-height:1.5;letter-spacing:.03em;resize:none;white-space:pre;overflow:auto;tab-size:4}
+.editor:focus{outline:none}
+.btn.go{border-color:var(--red);color:var(--red)}
+.btn.go:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.btn[disabled]{opacity:.35;cursor:not-allowed}
+.btn[disabled]:hover{border-color:var(--line2);color:var(--dim);background:none}
+
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:11px 22px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;z-index:9500;opacity:0;pointer-events:none}
 .toast.show{opacity:1}
 
@@ -200,6 +232,7 @@ hr{border:none;border-top:1px solid var(--line)}
     <div class="brand"><span class="reg">&#9632;</span><b>Paradise <span style="color:var(--red)">/</span> Central Control</b></div>
     <div class="cell">Repo<b id="mRepo">INSVRC</b></div>
     <div class="cell">Feed<b id="mFeed" class="live">&#9679; booting</b></div>
+    <div class="cell act" id="mAuthCell" title="GitHub access token">Auth<b id="mAuth">read-only</b></div>
     <div class="cell">API quota<b id="mRate">--/--</b></div>
     <div class="cell">UTC<b id="mClock">--:--:--</b></div>
   </div>
@@ -248,7 +281,11 @@ hr{border:none;border-top:1px solid var(--line)}
 
     <div class="cols" style="margin-top:0">
       <section class="pane">
-        <div class="ph"><span>&#91; File manifest &#93;</span><span id="mfCount">--</span></div>
+        <div class="ph"><span>&#91; File manifest &#93;</span>
+        <span style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="bNew" style="padding:3px 8px;display:none">&#43; New file</button>
+          <span id="mfCount">--</span>
+        </span></div>
         <div class="pb" id="manifest"></div>
       </section>
       <section class="pane">
@@ -259,8 +296,16 @@ hr{border:none;border-top:1px solid var(--line)}
           <button class="btn" id="bB64">&#8594; Base64</button>
           <button class="btn" id="bDec">&#8592; Decode</button>
           <button class="btn" id="bDl">Download</button>
+          <button class="btn go" id="bEditLocal" style="display:none">&#9998; Edit here</button>
+          <button class="btn red" id="bDel" style="display:none">Delete</button>
           <a class="btn" id="bEdit" target="_blank" rel="noopener">Edit on GitHub &#8599;</a>
           <a class="btn" id="bHist" target="_blank" rel="noopener">History &#8599;</a>
+        </div>
+        <div class="savebar" id="savebar" style="display:none">
+          <input id="cmsg" placeholder="Commit message">
+          <label class="twin" id="twinWrap" style="display:none"><input type="checkbox" id="twinChk" checked><span id="twinLbl">Sync twin</span></label>
+          <button class="btn go" id="bSave">Commit &#8594;</button>
+          <button class="btn" id="bCancel">Cancel</button>
         </div>
         <div class="pb" id="viewer"><div class="empty">Select a file from the manifest</div></div>
       </section>
@@ -296,6 +341,40 @@ hr{border:none;border-top:1px solid var(--line)}
       <div class="gateact">
         <button class="btn" id="gCancel">Cancel</button>
         <button class="btn on" id="gOk">Unlock &#8594;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TOKEN ============ -->
+<div id="tok">
+  <div class="gatebox">
+    <div class="top"><span>&#91; GitHub access token &#93;</span><span id="tokWho">Not signed in</span></div>
+    <div class="body">
+      <h2>Write access</h2>
+      <p>Fine-grained PAT &#183; stored in this browser only</p>
+      <input id="tokIn" autocomplete="off" spellcheck="false" placeholder="github_pat_&#8230;">
+      <div class="gatemsg" id="tokMsg"></div>
+      <div class="gateact">
+        <button class="btn" id="tokOut">Sign out</button>
+        <button class="btn on" id="tokSave">Verify &amp; save &#8594;</button>
+      </div>
+
+      <div class="help">
+        <b>วิธีสร้าง token</b>
+        <ol>
+          <li>เปิด <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Settings &#8594; Developer settings &#8594; Fine-grained tokens</a></li>
+          <li>Repository access &#8594; <b>Only select repositories</b> &#8594; เลือก <code>INSVRC</code> อย่างเดียว</li>
+          <li>Permissions &#8594; Repository &#8594; <b>Contents: Read and write</b> (อย่างอื่นไม่ต้อง)</li>
+          <li>Expiration ตั้งวันหมดอายุไว้ด้วย แล้วกด Generate</li>
+        </ol>
+      </div>
+
+      <div class="warnbox">
+        <b>&#9888; อ่านก่อน</b><br>
+        token เก็บใน localStorage ของเครื่องนี้ ใครนั่งหน้าเครื่องแล้วเปิด devtools ก็เห็น &#8212; รหัส 6 หลักกันไม่ได้<br>
+        <b>ห้ามพิมพ์ token ลงในไฟล์แล้ว push</b> GitHub จะ revoke ทิ้งทันที<br>
+        หลุดเมื่อไหร่กด Revoke ที่หน้า token ได้เลย ของเก่าที่ถูกแก้กู้คืนจาก git history ได้หมด
       </div>
     </div>
   </div>
@@ -351,6 +430,10 @@ var curFile = null;       // {path,sha,size}
 var curText = '';         // เนื้อไฟล์ที่กำลังดู
 var pending = null;       // ยูนิตที่กำลังรอรหัส
 var detected = {};        // ผลตรวจรอบล่าสุดของยูนิตที่เปิด
+var fileRaw = '';         // ข้อความดิบตามที่เก็บอยู่บน GitHub
+var fileShown = '';       // รูปแบบที่เอามาแสดงและแก้ (ไฟล์ _base64 จะถอดรหัสแล้ว)
+var isB64File = false;    // ไฟล์นี้เก็บเป็น base64 บน repo จริง ๆ
+var editing = false;
 
 var $ = function(id){ return document.getElementById(id); };
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -367,11 +450,24 @@ setInterval(tick,1000); tick();
    GitHub fetch + cache ชั่วคราวใน sessionStorage
    รีเควสต์แบบไม่ล็อกอินได้ 60 ครั้ง/ชม./ไอพี เลยต้องประหยัด
    ========================================================================== */
-var rate = { left:null, reset:null };
+var rate = { left:null, reset:null, max:60 };
+
+/* token เก็บในเครื่องนี้เท่านั้น ไม่เคยถูกเขียนลงไฟล์ ไม่เคยถูกส่งไปที่อื่นนอกจาก api.github.com */
+var TOKEN = null;
+try{ TOKEN = localStorage.getItem('pcc.token') || null; }catch(e){}
+
+function hdrs(extra){
+  var h = { 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' };
+  if(TOKEN) h['Authorization'] = 'Bearer ' + TOKEN;
+  if(extra) for(var k in extra) h[k] = extra[k];
+  return h;
+}
 
 function setRate(res){
   var l = res.headers.get('x-ratelimit-remaining');
   var r = res.headers.get('x-ratelimit-reset');
+  var m = res.headers.get('x-ratelimit-limit');
+  if(m) rate.max = parseInt(m,10);
   if(l!==null){
     rate.left = parseInt(l,10);
     rate.reset = r ? parseInt(r,10)*1000 : null;
@@ -385,11 +481,11 @@ function paintRate(){
     try{ var s = JSON.parse(sessionStorage.getItem('pcc.rate') || 'null'); if(s) rate = s; }catch(e){}
   }
   if(rate.left===null) return;
-  var lim = rate.left + '/60';
+  var lim = rate.left + '/' + rate.max;
   $('mRate').textContent = lim;
   var when = rate.reset ? new Date(rate.reset).toISOString().slice(11,16)+'Z' : '--';
   $('fRate').textContent = 'quota ' + lim + ' · resets ' + when;
-  $('mRate').style.color = rate.left <= 3 ? 'var(--red)' : '';
+  $('mRate').style.color = rate.left <= rate.max * 0.05 ? 'var(--red)' : '';
 }
 
 function cacheGet(k,ttl){
@@ -407,14 +503,34 @@ function cacheSet(k,d){
 function gh(path, ttl){
   var key = path;
   if(ttl){ var c = cacheGet(key,ttl); if(c) return Promise.resolve(c); }
-  return fetch(API + path, { headers:{ 'Accept':'application/vnd.github+json' }, cache:'no-store' })
+  return fetch(API + path, { headers: hdrs(), cache:'no-store' })
     .then(function(res){
       setRate(res);
+      // token หมดอายุหรือถูก revoke — ถอยไปโหมดอ่านอย่างเดียวแทนที่จะพังทั้งหน้า
+      if(res.status === 401 && TOKEN){ tokenExpired(); throw new Error('AUTH'); }
       if(res.status === 403 && rate.left === 0) throw new Error('RATE');
       if(!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
     })
     .then(function(d){ if(ttl) cacheSet(key,d); return d; });
+}
+
+/* เขียนกลับขึ้น GitHub — ต้องมี token เท่านั้น */
+function ghWrite(method, path, body){
+  if(!TOKEN) return Promise.reject(new Error('NOTOKEN'));
+  return fetch(API + path, {
+    method: method,
+    headers: hdrs({ 'Content-Type':'application/json' }),
+    body: JSON.stringify(body)
+  }).then(function(res){
+    setRate(res);
+    return res.json().catch(function(){ return {}; }).then(function(j){
+      if(res.ok) return j;
+      var e = new Error(j.message || ('HTTP ' + res.status));
+      e.status = res.status;
+      throw e;
+    });
+  });
 }
 
 function feed(txt, warn){
@@ -609,6 +725,7 @@ function openUnit(u){
   $('vbar').style.display = 'none';
   $('vfName').innerHTML = '<span>&#91; Viewer &#93;</span>';
 
+  paintAuth();
   paintUnit();
   loadCommitLog(u);
 }
@@ -741,37 +858,271 @@ function renderDetLog(id){
    Viewer
    ========================================================================== */
 function openFile(path, el){
+  if(editing && !confirm('ยังแก้ค้างอยู่ ทิ้งที่แก้ไว้แล้วเปิดไฟล์อื่นเลยไหม?')) return;
+  exitEdit();
+
   Array.prototype.forEach.call($('manifest').querySelectorAll('.f'), function(x){ x.classList.remove('sel'); });
   if(el) el.classList.add('sel');
 
   var f = filesOf(unit).filter(function(x){ return x.path === path; })[0];
   curFile = f;
+  isB64File = false;
+  fileRaw = ''; fileShown = '';
   $('vfName').innerHTML = '<span>&#91; '+esc(base(path))+' &#93;</span><span>'+fmtSize(f && f.size)+'</span>';
   $('bEdit').href = WEB + '/edit/' + REPO.branch + '/' + encPath(path);
   $('bHist').href = WEB + '/commits/' + REPO.branch + '/' + encPath(path);
 
-  if(IMG.test(path)){
-    $('vbar').style.display = 'none';
+  var img = IMG.test(path);
+  $('vbar').style.display = '';
+  ['find','bCopy','bB64','bDec','bDl','bEditLocal'].forEach(function(id){
+    $(id).style.display = img ? 'none' : '';
+  });
+  if(!img) $('bEditLocal').style.display = TOKEN ? '' : 'none';
+  $('bDel').style.display = TOKEN ? '' : 'none';
+
+  if(img){
     $('viewer').innerHTML = '<div class="imgwrap"><img src="'+RAW+encPath(path)+'?v='+(f?f.sha.slice(0,8):'')+'" alt=""></div>';
     return;
   }
 
-  $('vbar').style.display = '';
   $('find').value = '';
   $('viewer').innerHTML = '<div class="empty">Reading&#8230;</div>';
 
   fetch(RAW + encPath(path) + '?v=' + (f ? f.sha.slice(0,8) : Date.now()), { cache:'no-store' })
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
     .then(function(t){
-      curText = t;
-      // ไฟล์ *_base64 ถอดรหัสให้อ่านอัตโนมัติ
+      fileRaw = t;
+      fileShown = t;
+      // ไฟล์ *_base64 ถอดรหัสให้อ่านอัตโนมัติ และตอนเซฟจะเข้ารหัสกลับให้เอง
       if(/base64/i.test(base(path))){
         var dec = tryDecode(t);
-        if(dec !== null){ curText = dec; toast('Base64 decoded for display'); }
+        if(dec !== null){ fileShown = dec; isB64File = true; toast('Base64 decoded for display'); }
       }
+      curText = fileShown;
       paintDoc();
     })
     .catch(function(e){ $('viewer').innerHTML = '<div class="empty">Could not read file &#8212; '+esc(e.message)+'</div>'; });
+}
+
+/* ==========================================================================
+   โหมดแก้ไข
+   ========================================================================== */
+function twinOf(path){
+  // ไฟล์คู่ที่เก็บเนื้อเดียวกันในรูป base64 เช่น Collab Yaki_Teapot_SSG -> ..._base64
+  if(/base64$/i.test(path)) return null;
+  var t = path + '_base64';
+  return filesOf(unit).filter(function(f){ return f.path === t; })[0] || null;
+}
+
+function enterEdit(){
+  if(!TOKEN || !curFile || IMG.test(curFile.path)) return;
+  editing = true;
+  $('savebar').style.display = '';
+  // ปุ่มแปลงร่างข้อความใช้ตอนแก้ไม่ได้ ไม่งั้นมันจะไปทับ textarea
+  ['find','bCopy','bB64','bDec','bDl','bEditLocal'].forEach(function(id){ $(id).style.display = 'none'; });
+  $('find').value = '';
+  $('cmsg').value = 'Update ' + base(curFile.path);
+
+  var tw = twinOf(curFile.path);
+  $('twinWrap').style.display = tw ? '' : 'none';
+  $('twinLbl').textContent = 'Sync ' + (tw ? base(tw.path) : '');
+
+  var ta = document.createElement('textarea');
+  ta.className = 'editor';
+  ta.id = 'edit';
+  ta.spellcheck = false;
+  ta.value = fileShown;
+  $('viewer').innerHTML = '';
+  $('viewer').appendChild(ta);
+  ta.focus();
+
+  $('vfName').innerHTML = '<span>&#91; '+esc(base(curFile.path))+' &#93;</span>'
+    + '<span style="color:var(--red)">&#9679; editing'+(isB64File ? ' &#183; saves as base64' : '')+'</span>';
+}
+
+function exitEdit(){
+  editing = false;
+  $('savebar').style.display = 'none';
+  if(curFile && !IMG.test(curFile.path)){
+    ['find','bCopy','bB64','bDec','bDl'].forEach(function(id){ $(id).style.display = ''; });
+    $('bEditLocal').style.display = TOKEN ? '' : 'none';
+  }
+}
+
+function saveFile(){
+  var ta = $('edit');
+  if(!ta || !curFile) return;
+  var shown = ta.value;
+  var payload = isB64File ? encodeB64(shown) : shown;
+  var msg = $('cmsg').value.trim() || ('Update ' + base(curFile.path));
+  var tw = twinOf(curFile.path);
+  var alsoTwin = tw && $('twinChk').checked;
+
+  $('bSave').disabled = true;
+  $('bSave').textContent = 'Committing…';
+
+  ghWrite('PUT', '/contents/' + encPath(curFile.path), {
+    message: msg,
+    content: encodeB64(payload),
+    sha: curFile.sha,
+    branch: REPO.branch
+  })
+  .then(function(r){
+    curFile.sha = r.content.sha;
+    curFile.size = r.content.size;
+    fileShown = shown;
+    fileRaw = payload;
+    if(!alsoTwin) return null;
+    // ไฟล์คู่เก็บ base64 ของเนื้อเดียวกัน อัปเดตให้ในคอมมิตถัดไป
+    return ghWrite('PUT', '/contents/' + encPath(tw.path), {
+      message: msg + ' (base64)',
+      content: encodeB64(encodeB64(shown)),
+      sha: tw.sha,
+      branch: REPO.branch
+    }).then(function(r2){ tw.sha = r2.content.sha; tw.size = r2.content.size; return r2; });
+  })
+  .then(function(){
+    toast(alsoTwin ? 'Committed 2 files' : 'Committed');
+    exitEdit();
+    curText = fileShown;
+    paintDoc();
+    afterWrite();
+  })
+  .catch(function(e){ writeError(e); })
+  .then(function(){ $('bSave').disabled = false; $('bSave').textContent = 'Commit →'; });
+}
+
+function newFile(){
+  if(!TOKEN || !unit) return;
+  var rel = prompt('ชื่อไฟล์ใหม่ (ใส่ path ย่อยได้ เช่น Role/Bartender)\nจะถูกสร้างใน ' + unit.dir + '/');
+  if(!rel) return;
+  rel = rel.replace(/^\/+/, '').trim();
+  if(!rel) return;
+  var path = unit.dir + '/' + rel;
+  if(filesOf(unit).some(function(f){ return f.path === path; })){ toast('มีไฟล์นี้อยู่แล้ว'); return; }
+
+  ghWrite('PUT', '/contents/' + encPath(path), {
+    message: 'Create ' + rel,
+    content: encodeB64('\n'),
+    branch: REPO.branch
+  })
+  .then(function(){ toast('Created ' + rel); return afterWrite(); })
+  .then(function(){ openFile(path); })
+  .catch(writeError);
+}
+
+function deleteFile(){
+  if(!TOKEN || !curFile) return;
+  var name = base(curFile.path);
+  if(!confirm('ลบ ' + name + ' ออกจาก repo?\n\nไฟล์จะหายจาก branch ' + REPO.branch
+    + ' แต่ยังกู้คืนจาก git history ได้')) return;
+
+  ghWrite('DELETE', '/contents/' + encPath(curFile.path), {
+    message: 'Delete ' + name,
+    sha: curFile.sha,
+    branch: REPO.branch
+  })
+  .then(function(){
+    toast('Deleted ' + name);
+    curFile = null;
+    $('vbar').style.display = 'none';
+    $('viewer').innerHTML = '<div class="empty">Select a file from the manifest</div>';
+    $('vfName').innerHTML = '<span>&#91; Viewer &#93;</span>';
+    return afterWrite();
+  })
+  .catch(writeError);
+}
+
+/* หลังเขียนเสร็จ ดึงสารบัญใหม่เพื่อให้ manifest กับตัวตรวจจับตรงกับของจริง */
+function afterWrite(){
+  var keep = curFile && curFile.path;
+  return loadTree(true).then(function(){
+    paintUnit();
+    loadCommitLog(unit);
+    if(keep){
+      var el = $('manifest').querySelector('.f[data-p="' + keep.replace(/"/g,'&quot;') + '"]');
+      if(el) el.classList.add('sel');
+    }
+  }).catch(function(){});
+}
+
+function tokenExpired(){
+  TOKEN = null; AUTHWHO = null;
+  try{ localStorage.removeItem('pcc.token'); localStorage.removeItem('pcc.who'); }catch(e){}
+  paintAuth();
+  exitEdit();
+  toast('Token หมดอายุหรือถูก revoke — กลับเป็นอ่านอย่างเดียว');
+}
+
+function writeError(e){
+  if(e.message === 'NOTOKEN'){ toast('ต้องใส่ token ก่อน'); openTok(); return; }
+  if(e.status === 401){ tokenExpired(); openTok(); return; }
+  if(e.status === 409){ toast('ไฟล์ถูกแก้บน GitHub ไปแล้ว กด Rescan ก่อน'); return; }
+  if(e.status === 403 || e.status === 404){ toast('Token ไม่มีสิทธิ์เขียน repo นี้'); return; }
+  toast('Commit ไม่สำเร็จ — ' + e.message);
+}
+
+/* ==========================================================================
+   Token
+   ========================================================================== */
+var AUTHWHO = null;
+try{ AUTHWHO = localStorage.getItem('pcc.who') || null; }catch(e){}
+
+function paintAuth(who){
+  if(who){ AUTHWHO = who; try{ localStorage.setItem('pcc.who', who); }catch(e){} }
+  var e = $('mAuth');
+  if(TOKEN){ e.textContent = '● ' + (AUTHWHO || 'write'); e.className = 'rw'; }
+  else { e.textContent = 'read-only'; e.className = ''; }
+  $('bNew').style.display = (TOKEN && unit) ? '' : 'none';
+}
+
+function openTok(){
+  $('tokIn').value = '';
+  $('tokMsg').textContent = '';
+  $('tokMsg').style.color = '';
+  $('tokWho').textContent = TOKEN ? 'Token stored' : 'Not signed in';
+  $('tok').classList.add('show');
+  setTimeout(function(){ $('tokIn').focus(); }, 30);
+}
+
+function saveTok(){
+  var t = $('tokIn').value.trim();
+  if(!t) return;
+  $('tokMsg').style.color = 'var(--dim)';
+  $('tokMsg').textContent = 'Verifying…';
+
+  // เช็กสองอย่าง: token ใช้ได้จริงไหม และมีสิทธิ์เขียน repo นี้ไหม
+  fetch(API, { headers:{ 'Accept':'application/vnd.github+json', 'Authorization':'Bearer ' + t }, cache:'no-store' })
+    .then(function(res){
+      if(res.status === 401) throw new Error('Token ไม่ถูกต้องหรือหมดอายุ');
+      if(!res.ok) throw new Error('เข้าถึง repo ไม่ได้ (HTTP ' + res.status + ')');
+      return res.json();
+    })
+    .then(function(r){
+      if(!r.permissions || !r.permissions.push) throw new Error('Token อ่านได้แต่เขียนไม่ได้ — ตั้ง Contents: Read and write');
+      TOKEN = t;
+      try{ localStorage.setItem('pcc.token', t); }catch(e){}
+      try{ Object.keys(sessionStorage).forEach(function(k){ if(k.indexOf('pcc.c.') === 0) sessionStorage.removeItem(k); }); }catch(e){}
+      paintAuth(r.full_name.split('/')[0]);
+      $('tok').classList.remove('show');
+      toast('Write access enabled');
+      if(curFile) openFile(curFile.path);
+      return loadTree(true).then(function(){ if(unit) paintUnit(); else renderIndex(); });
+    })
+    .catch(function(e){
+      $('tokMsg').style.color = '';
+      $('tokMsg').textContent = '✖ ' + e.message;
+    });
+}
+
+function signOut(){
+  TOKEN = null; AUTHWHO = null;
+  try{ localStorage.removeItem('pcc.token'); localStorage.removeItem('pcc.who'); }catch(e){}
+  paintAuth();
+  $('tok').classList.remove('show');
+  exitEdit();
+  if(curFile) openFile(curFile.path);
+  toast('Signed out');
 }
 
 function paintDoc(){
@@ -851,7 +1202,34 @@ $('gCancel').onclick = hideGate;
 $('code').onkeydown = function(e){ if(e.key === 'Enter') tryCode(); if(e.key === 'Escape') hideGate(); };
 $('gate').onclick = function(e){ if(e.target === $('gate')) hideGate(); };
 
-$('find').oninput = function(){ if(curFile && !IMG.test(curFile.path)) paintDoc(); };
+/* --- auth --- */
+$('mAuthCell').onclick = openTok;
+$('tokSave').onclick = saveTok;
+$('tokOut').onclick = signOut;
+$('tokIn').onkeydown = function(e){ if(e.key === 'Enter') saveTok(); if(e.key === 'Escape') $('tok').classList.remove('show'); };
+$('tok').onclick = function(e){ if(e.target === $('tok')) $('tok').classList.remove('show'); };
+
+/* --- edit --- */
+$('bEditLocal').onclick = enterEdit;
+$('bSave').onclick = saveFile;
+$('bDel').onclick = deleteFile;
+$('bNew').onclick = newFile;
+$('bCancel').onclick = function(){
+  var ta = $('edit');
+  if(ta && ta.value !== fileShown && !confirm('ทิ้งที่แก้ไว้ทั้งหมด?')) return;
+  exitEdit();
+  curText = fileShown;
+  paintDoc();
+};
+document.addEventListener('keydown', function(e){
+  if(editing && (e.ctrlKey || e.metaKey) && e.key === 's'){ e.preventDefault(); saveFile(); }
+});
+window.addEventListener('beforeunload', function(e){
+  var ta = $('edit');
+  if(editing && ta && ta.value !== fileShown){ e.preventDefault(); e.returnValue = ''; }
+});
+
+$('find').oninput = function(){ if(curFile && !editing && !IMG.test(curFile.path)) paintDoc(); };
 $('bCopy').onclick = function(){
   navigator.clipboard.writeText(curText).then(function(){ toast('Copied'); }, function(){ toast('Copy blocked — select manually'); });
 };
@@ -876,6 +1254,7 @@ $('bDl').onclick = function(){
    Boot + สแกนซ้ำทุก 5 นาที (60 req/ชม. คือเพดาน เลยไม่ยิงถี่กว่านี้)
    ========================================================================== */
 paintRate();
+paintAuth();
 loadTree().then(function(){
   renderIndex();
   renderGlobalLog();
