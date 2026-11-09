@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paradise — Central Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+Thai:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0A;
+  --panel:#121212;
+  --panel2:#171717;
+  --line:#2A2A2A;
+  --line2:#3A3A3A;
+  --fg:#EAEAEA;
+  --dim:#7A7A7A;
+  --dimmer:#4E4E4E;
+  --red:#E61919;
+  --green:#4AF626;
+  --mono:'JetBrains Mono','Noto Sans Thai',ui-monospace,'Leelawadee UI','Yu Gothic UI','Malgun Gothic',monospace;
+  --macro:'Archivo Black','Noto Sans Thai',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--fg);
+  font-family:var(--mono);font-size:13px;line-height:1.4;
+  letter-spacing:.04em;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ---- analog degradation ---- */
+.scan,.noise{position:fixed;inset:0;pointer-events:none;z-index:9000}
+.scan{background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.22) 2px,rgba(0,0,0,.22) 4px);opacity:.5}
+.noise{opacity:.035;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>")}
+
+::selection{background:var(--red);color:#fff}
+a{color:inherit;text-decoration:none}
+button,input{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:none}
+hr{border:none;border-top:1px solid var(--line)}
+
+.wrap{max-width:1500px;margin:0 auto;padding:0 20px}
+
+/* ---- masthead ---- */
+.mast{border-bottom:2px solid var(--fg);position:sticky;top:0;z-index:500;background:var(--bg)}
+.mast .wrap{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.brand{padding:12px 20px 12px 0;display:flex;align-items:center;gap:12px;flex:1;min-width:260px}
+.brand b{font-family:var(--macro);font-size:18px;letter-spacing:-.03em;text-transform:uppercase;line-height:1}
+.brand .reg{color:var(--red);font-size:16px}
+.mast .cell{border-left:1px solid var(--line);padding:12px 16px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:flex;flex-direction:column;justify-content:center;gap:3px;white-space:nowrap}
+.mast .cell b{color:var(--fg);font-weight:400;letter-spacing:.08em}
+.live{color:var(--green)}
+.live.warn{color:var(--red)}
+
+/* ---- generic blocks ---- */
+.label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.rule{display:flex;align-items:center;gap:12px;margin:0 0 14px;text-transform:uppercase;font-size:10px;letter-spacing:.16em;color:var(--dim)}
+.rule::after{content:"";flex:1;border-top:1px solid var(--line)}
+.tick{color:var(--red)}
+
+.btn{border:1px solid var(--line2);padding:7px 14px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;color:var(--dim);transition:none;white-space:nowrap}
+.btn:hover{border-color:var(--fg);color:var(--fg);background:var(--panel2)}
+.btn.red:hover{border-color:var(--red);color:var(--red)}
+.btn.on{border-color:var(--fg);color:var(--fg);background:var(--panel2)}
+
+/* ---- index / unit grid ---- */
+#index{padding:60px 0 80px}
+.hero{margin-bottom:48px}
+.hero h1{font-family:var(--macro);font-size:clamp(3rem,11vw,10rem);line-height:.84;letter-spacing:-.05em;text-transform:uppercase}
+.hero h1 span{color:var(--red)}
+.hero .sub{margin-top:18px;display:flex;gap:18px;flex-wrap:wrap;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);border-top:1px solid var(--line);padding-top:14px}
+
+.units{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.unit{background:var(--bg);padding:18px;cursor:pointer;display:flex;flex-direction:column;gap:14px;min-height:150px;position:relative}
+.unit:hover{background:var(--panel2)}
+.unit .no{font-size:10px;color:var(--dimmer);letter-spacing:.16em}
+.unit h3{font-family:var(--macro);font-size:19px;line-height:.95;letter-spacing:-.02em;text-transform:uppercase;margin-top:auto}
+.unit .foot{display:flex;justify-content:space-between;align-items:flex-end;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-top:1px solid var(--line);padding-top:10px}
+.unit:hover .foot{border-color:var(--line2)}
+.state{letter-spacing:.14em}
+.state.lock{color:var(--red)}
+.state.open{color:var(--green)}
+.unit .badge{position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:9px;letter-spacing:.14em;padding:3px 7px}
+
+/* ---- gate ---- */
+#gate{position:fixed;inset:0;z-index:8000;background:rgba(10,10,10,.96);display:none;align-items:center;justify-content:center;padding:20px}
+#gate.show{display:flex}
+.gatebox{border:2px solid var(--fg);background:var(--bg);width:100%;max-width:460px}
+.gatebox .top{border-bottom:1px solid var(--line);padding:11px 16px;display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.gatebox .body{padding:28px 24px 24px}
+.gatebox h2{font-family:var(--macro);font-size:clamp(1.6rem,5vw,2.4rem);line-height:.92;letter-spacing:-.03em;text-transform:uppercase;margin-bottom:6px}
+.gatebox p{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:24px}
+#code{width:100%;border:1px solid var(--line2);background:var(--panel);padding:16px;font-size:26px;letter-spacing:.5em;text-align:center;color:var(--fg)}
+#code:focus{outline:none;border-color:var(--fg)}
+#gate.bad #code{border-color:var(--red);color:var(--red)}
+.gatemsg{min-height:16px;margin-top:12px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+.gateact{display:flex;gap:10px;margin-top:18px}
+.gateact .btn{flex:1;text-align:center;padding:11px}
+
+/* ---- unit view ---- */
+#view{display:none;padding:34px 0 80px}
+#view.show{display:block}
+.crumb{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.vhead{border-top:2px solid var(--fg);border-bottom:1px solid var(--line);padding:22px 0 18px;margin-bottom:0}
+.vhead h2{font-family:var(--macro);font-size:clamp(2.2rem,7.5vw,5.5rem);line-height:.86;letter-spacing:-.045em;text-transform:uppercase}
+.vhead .path{margin-top:10px;font-size:11px;color:var(--dim);word-break:break-all}
+
+.telem{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.telem div{background:var(--bg);padding:14px 16px}
+.telem .k{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.telem .v{font-family:var(--macro);font-size:24px;letter-spacing:-.02em;line-height:1}
+.telem .v.sm{font-family:var(--mono);font-size:12px;letter-spacing:.04em;font-weight:700;padding-top:7px}
+.telem .v.red{color:var(--red)}
+
+.alert{border:1px solid var(--red);border-left-width:4px;padding:12px 16px;margin:18px 0 0;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.alert b{color:var(--red);font-weight:400}
+
+/* ล็อกความสูงไว้ เพื่อให้สารบัญไฟล์ค้างอยู่กับที่ตอนเลื่อนอ่านไฟล์ยาว ๆ */
+.cols{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-top:none;height:clamp(420px,66vh,780px)}
+.cols>section{background:var(--bg);min-width:0}
+.pane{display:flex;flex-direction:column}
+.pane .ph{border-bottom:1px solid var(--line);padding:11px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);flex-wrap:wrap}
+.pane .pb{padding:0;overflow:auto;flex:1}
+
+/* manifest */
+.grp{border-bottom:1px solid var(--line)}
+.grp>summary{list-style:none;cursor:pointer;padding:9px 14px;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer);background:var(--panel);display:flex;justify-content:space-between;gap:8px}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary:hover{color:var(--fg)}
+.grp[open]>summary{color:var(--dim)}
+.f{display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;border-bottom:1px solid #1C1C1C;font-size:12px}
+.f:last-child{border-bottom:none}
+.f:hover{background:var(--panel2)}
+.f.sel{background:var(--panel2);box-shadow:inset 3px 0 0 var(--red)}
+.f .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f .s{font-size:9px;color:var(--dimmer);letter-spacing:.1em;white-space:nowrap}
+.f .new{background:var(--red);color:#fff;font-size:8px;letter-spacing:.12em;padding:2px 5px}
+.f .mod{border:1px solid var(--line2);color:var(--dim);font-size:8px;letter-spacing:.12em;padding:1px 5px}
+
+/* viewer */
+.vbar{border-bottom:1px solid var(--line);padding:10px 14px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.vbar .btn{padding:5px 10px}
+#find{border:1px solid var(--line2);background:var(--panel);padding:5px 10px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;width:150px}
+#find:focus{outline:none;border-color:var(--fg)}
+.doc{padding:0;font-size:12.5px;counter-reset:ln}
+.ln{display:flex;gap:0;border-bottom:1px solid #161616}
+.ln:hover{background:var(--panel2)}
+.ln .g{flex:none;width:52px;padding:4px 10px;text-align:right;color:var(--dimmer);font-size:10px;background:var(--panel);border-right:1px solid var(--line);user-select:none}
+.ln .t{padding:4px 14px;white-space:pre-wrap;word-break:break-word;min-width:0;flex:1}
+.ln.sep .t{color:var(--red);letter-spacing:.1em}
+.ln.blank .t{color:var(--dimmer)}
+.ln.hit{background:rgba(230,25,25,.12)}
+.ln.hit .t mark{background:var(--red);color:#fff}
+.empty{padding:40px 20px;text-align:center;color:var(--dimmer);font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+.imgwrap{padding:24px;text-align:center}
+.imgwrap img{max-width:100%;border:1px solid var(--line);image-rendering:auto}
+
+/* logs */
+.logs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-top:none}
+.logs>section{background:var(--bg)}
+.ev{display:flex;gap:12px;padding:10px 14px;border-bottom:1px solid #1A1A1A;font-size:11px;align-items:flex-start}
+.ev:last-child{border-bottom:none}
+.ev .when{flex:none;width:112px;color:var(--dimmer);font-size:10px;letter-spacing:.06em}
+.ev .what{flex:1;min-width:0}
+.ev .msg{display:block;word-break:break-word}
+.ev .who{display:block;margin-top:3px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.ev .kind{flex:none;font-size:8px;letter-spacing:.12em;padding:2px 6px;border:1px solid var(--line2);color:var(--dim)}
+.ev .kind.CREATED{background:var(--red);border-color:var(--red);color:#fff}
+.ev .kind.REMOVED{border-color:var(--red);color:var(--red)}
+.ev a:hover{color:var(--red)}
+
+/* footer */
+.foot{border-top:1px solid var(--line);margin-top:48px;padding:20px 0 40px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:11px 22px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;z-index:9500;opacity:0;pointer-events:none}
+.toast.show{opacity:1}
+
+@media(max-width:1000px){
+  .cols{grid-template-columns:1fr;height:auto}
+  .logs{grid-template-columns:1fr}
+  .pane .pb{max-height:360px}
+}
+@media(max-width:620px){
+  .wrap{padding:0 14px}
+  .mast .cell{padding:9px 11px}
+  .brand{padding-right:11px}
+  .ev .when{width:78px}
+  .ln .g{width:38px;padding:4px 6px}
+}
+</style>
+</head>
+<body>
+<div class="noise"></div><div class="scan"></div>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="brand"><span class="reg">&#9632;</span><b>Paradise <span style="color:var(--red)">/</span> Central Control</b></div>
+    <div class="cell">Repo<b id="mRepo">INSVRC</b></div>
+    <div class="cell">Feed<b id="mFeed" class="live">&#9679; booting</b></div>
+    <div class="cell">API quota<b id="mRate">--/--</b></div>
+    <div class="cell">UTC<b id="mClock">--:--:--</b></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INDEX ============ -->
+  <section id="index">
+    <div class="hero">
+      <h1>Central<br>Contro<span>l</span></h1>
+      <div class="sub">
+        <span>&#47;&#47;&#47; Rev 1.0</span>
+        <span>Units <b id="hUnits">--</b></span>
+        <span>Blobs tracked <b id="hFiles">--</b></span>
+        <span>Source <b>github &#47; yukariyumevrc-beep &#47; INSVRC</b></span>
+      </div>
+    </div>
+
+    <div class="rule"><span class="tick">&#43;</span> Select operational unit &#8212; access code required</div>
+    <div class="units" id="units"></div>
+
+    <div class="rule" style="margin-top:42px"><span class="tick">&#43;</span> Global activity &#8212; last commits across all units</div>
+    <section style="border:1px solid var(--line)" id="globalLog"><div class="empty">Loading&#8230;</div></section>
+  </section>
+
+  <!-- ============ UNIT VIEW ============ -->
+  <section id="view">
+    <div class="crumb">
+      <button class="btn" id="back">&#8592; All units</button>
+      <span>&#47;&#47;</span>
+      <span id="cUnit">--</span>
+      <button class="btn" id="refresh">&#8635; Rescan</button>
+      <a class="btn" id="ghFolder" target="_blank" rel="noopener">Open folder on GitHub &#8599;</a>
+      <a class="btn" id="ghGallery" target="_blank" rel="noopener" style="display:none">Gallery slideshow page &#8599;</a>
+      <button class="btn red" id="lock">Lock unit</button>
+    </div>
+
+    <div class="vhead">
+      <h2 id="vName">--</h2>
+      <div class="path" id="vPath">--</div>
+    </div>
+
+    <div class="telem" id="telem"></div>
+    <div id="alertSlot"></div>
+
+    <div class="cols" style="margin-top:0">
+      <section class="pane">
+        <div class="ph"><span>&#91; File manifest &#93;</span><span id="mfCount">--</span></div>
+        <div class="pb" id="manifest"></div>
+      </section>
+      <section class="pane">
+        <div class="ph" id="vfName"><span>&#91; Viewer &#93;</span></div>
+        <div class="vbar" id="vbar" style="display:none">
+          <input id="find" placeholder="Filter lines">
+          <button class="btn" id="bCopy">Copy</button>
+          <button class="btn" id="bB64">&#8594; Base64</button>
+          <button class="btn" id="bDec">&#8592; Decode</button>
+          <button class="btn" id="bDl">Download</button>
+          <a class="btn" id="bEdit" target="_blank" rel="noopener">Edit on GitHub &#8599;</a>
+          <a class="btn" id="bHist" target="_blank" rel="noopener">History &#8599;</a>
+        </div>
+        <div class="pb" id="viewer"><div class="empty">Select a file from the manifest</div></div>
+      </section>
+    </div>
+
+    <div class="logs">
+      <section class="pane">
+        <div class="ph"><span>&#91; Commit log &#47; this unit &#93;</span><span id="clCount">--</span></div>
+        <div class="pb" id="commitLog"><div class="empty">Loading&#8230;</div></div>
+      </section>
+      <section class="pane">
+        <div class="ph"><span>&#91; Change detection &#47; local &#93;</span><button class="btn" id="clrDet" style="padding:3px 8px">Clear</button></div>
+        <div class="pb" id="detLog"></div>
+      </section>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>Paradise&#174; Central Control &#8212; Unit index &#47; 13 &#8212; Static client, read-only</span>
+    <span>Data &#47; GitHub REST v3 &#8212; No server &#8212; <span id="fRate">--</span></span>
+  </div>
+</main>
+
+<!-- ============ GATE ============ -->
+<div id="gate">
+  <div class="gatebox">
+    <div class="top"><span>&#91; Restricted &#93;</span><span>Auth &#47; local</span></div>
+    <div class="body">
+      <h2 id="gName">Unit</h2>
+      <p id="gPath">&#8212;</p>
+      <input id="code" inputmode="numeric" autocomplete="off" placeholder="&#183;&#183;&#183;&#183;&#183;&#183;" maxlength="12">
+      <div class="gatemsg" id="gMsg"></div>
+      <div class="gateact">
+        <button class="btn" id="gCancel">Cancel</button>
+        <button class="btn on" id="gOk">Unlock &#8594;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==========================================================================
+   Paradise Central Control
+   หน้าเดียวจบ อ่านข้อมูลจาก GitHub ตรง ๆ ไม่มีเซิร์ฟเวอร์
+
+   หมายเหตุเรื่องรหัส: repo เป็น public และหน้านี้เป็น HTML ธรรมดา
+   รหัสด้านล่างเก็บเป็น SHA-256 เพื่อไม่ให้อ่านเจอตอนเปิด view-source
+   แต่เลข 6 หลักถูกเดาย้อนกลับได้ในไม่กี่วินาทีถ้าตั้งใจทำ
+   ให้ถือว่าเป็น "กันคนกดมั่ว" ไม่ใช่ระบบความปลอดภัยจริง
+   ========================================================================== */
+
+var REPO = { owner:'yukariyumevrc-beep', name:'INSVRC', branch:'main' };
+var API  = 'https://api.github.com/repos/' + REPO.owner + '/' + REPO.name;
+var RAW  = 'https://raw.githubusercontent.com/' + REPO.owner + '/' + REPO.name + '/' + REPO.branch + '/';
+var WEB  = 'https://github.com/' + REPO.owner + '/' + REPO.name;
+
+/* --------------------------------------------------------------------------
+   นิยามยูนิต
+     dir    = โฟลเดอร์ที่ยึดเป็นขอบเขต
+     prefix = ถ้าใส่ จะไม่เอาทั้งโฟลเดอร์ แต่หยิบเฉพาะไฟล์ลูกตรงที่ชื่อขึ้นต้นด้วย
+              (ใช้กับ Azure / Collab ที่เป็นไฟล์ลอยปนกันอยู่ใน no_paradise_contorl)
+     hash   = SHA-256 ของ "PCC/" + รหัส
+   -------------------------------------------------------------------------- */
+var UNITS = [
+  { id:'bar13',     name:'Bar 13',            dir:'Paradise/Bar 13',               hash:'341ceab2ecb437d0399a0deff654381073cab7d627a21f4597bc327aba56136e' },
+  { id:'blackpaw',  name:'BlackPaw',          dir:'Paradise/BlackPaw',             hash:'89f51ffb9fdfe57432b9eab07211c01a572f7e78510874256a8dbb58ebcaa9dc' },
+  { id:'hall',      name:'Hall-Conventional', dir:'Paradise/Hall-Conventional',    hash:'e64a3dc1379f2ab945a8940fd341d372549d2d9a53d0967c4e240ad59bc63909' },
+  { id:'seaside',   name:'Seaside',           dir:'Paradise/Seaside',              hash:'66656e1b1603f11d4b91f381ef8647a054ef380b528ea4f0ebb2a1bee2c59fc5' },
+  { id:'shinzenso', name:'Shinzenso',         dir:'Paradise/Shinzenso',            hash:'88334cf639ce370f9c2c9ea0dd3228d0a85b8564576e8a056f00687a20f431f8' },
+  { id:'udon',      name:'Udon-Test',         dir:'Paradise/Udon-Test',            hash:'4161bb0f1119ff999eac3868ee55cce62f55ea848c19dd4134a4a66bc3ebc2aa' },
+  { id:'wanted',    name:'Wanted',            dir:'Paradise/Wanted',               hash:'e360693393b5b3ec2b8e2a24e509a99828de250562ac63d1a3a2d39602e6d523' },
+  { id:'yaki',      name:'Yaki',              dir:'Paradise/Yaki',                 hash:'521ba582b53de227dd6c9130312169ec9cdb5a0ef321a8f6a6fee1ea4e3bef63' },
+  { id:'goldenage', name:'Golden Age',        dir:'Paradise/golden-age',           hash:'8dc55b7c5f18e8ebf350721fb295888b374cb42785c59caf831e62d41357a184' },
+  { id:'apex',      name:'APEX',              dir:'Paradise/no_paradise_contorl/APEX', hash:'eec5407a9d709d6dcb421389f9d78a7e4b3b1307fc7509e52b4b4f9ac374477d' },
+  { id:'azure',     name:'Azure Wanted Lumina', dir:'Paradise/no_paradise_contorl', prefix:['azure_wanted_lumina'], hash:'86684c6cf8e97baaf3c488820cce50a65f99f9f8d7538e4d03e3f5630e2af596' },
+  { id:'collab',    name:'Collab',            dir:'Paradise/no_paradise_contorl', prefix:['collab','cross_maid'],  hash:'832c25c4aed766fa0154d8c54a307d2bd290410e76213658aa085f7f93294cec' },
+  { id:'gallery',   name:'Central Control / Gallery', dir:'Paradise/paradise_central_control/gallery', gallery:true, hash:'a2b0395468f2da89e0cfa9157b820ee6e1799ea47d619ae9e943aa11d7d1dc6e' }
+];
+
+var IMG = /\.(png|jpe?g|gif|webp|bmp)$/i;
+
+/* ---------- state ---------- */
+var TREE = null;          // [{path,sha,size}]
+var unit = null;          // ยูนิตที่เปิดอยู่
+var curFile = null;       // {path,sha,size}
+var curText = '';         // เนื้อไฟล์ที่กำลังดู
+var pending = null;       // ยูนิตที่กำลังรอรหัส
+var detected = {};        // ผลตรวจรอบล่าสุดของยูนิตที่เปิด
+
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function encPath(p){ return p.split('/').map(encodeURIComponent).join('/'); }
+
+var toastT;
+function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(function(){t.classList.remove('show');},1900); }
+
+/* ---------- clock ---------- */
+function tick(){ $('mClock').textContent = new Date().toISOString().slice(11,19); }
+setInterval(tick,1000); tick();
+
+/* ==========================================================================
+   GitHub fetch + cache ชั่วคราวใน sessionStorage
+   รีเควสต์แบบไม่ล็อกอินได้ 60 ครั้ง/ชม./ไอพี เลยต้องประหยัด
+   ========================================================================== */
+var rate = { left:null, reset:null };
+
+function setRate(res){
+  var l = res.headers.get('x-ratelimit-remaining');
+  var r = res.headers.get('x-ratelimit-reset');
+  if(l!==null){
+    rate.left = parseInt(l,10);
+    rate.reset = r ? parseInt(r,10)*1000 : null;
+    try{ sessionStorage.setItem('pcc.rate', JSON.stringify(rate)); }catch(e){}
+    paintRate();
+  }
+}
+function paintRate(){
+  // รอบที่อ่านจากแคช จะไม่มี header กลับมา เลยหยิบค่าล่าสุดที่เคยเห็นมาโชว์ไว้ก่อน
+  if(rate.left === null){
+    try{ var s = JSON.parse(sessionStorage.getItem('pcc.rate') || 'null'); if(s) rate = s; }catch(e){}
+  }
+  if(rate.left===null) return;
+  var lim = rate.left + '/60';
+  $('mRate').textContent = lim;
+  var when = rate.reset ? new Date(rate.reset).toISOString().slice(11,16)+'Z' : '--';
+  $('fRate').textContent = 'quota ' + lim + ' · resets ' + when;
+  $('mRate').style.color = rate.left <= 3 ? 'var(--red)' : '';
+}
+
+function cacheGet(k,ttl){
+  try{
+    var raw = sessionStorage.getItem('pcc.c.'+k); if(!raw) return null;
+    var o = JSON.parse(raw);
+    if(Date.now() - o.t > ttl) return null;
+    return o.d;
+  }catch(e){ return null; }
+}
+function cacheSet(k,d){
+  try{ sessionStorage.setItem('pcc.c.'+k, JSON.stringify({t:Date.now(),d:d})); }catch(e){}
+}
+
+function gh(path, ttl){
+  var key = path;
+  if(ttl){ var c = cacheGet(key,ttl); if(c) return Promise.resolve(c); }
+  return fetch(API + path, { headers:{ 'Accept':'application/vnd.github+json' }, cache:'no-store' })
+    .then(function(res){
+      setRate(res);
+      if(res.status === 403 && rate.left === 0) throw new Error('RATE');
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function(d){ if(ttl) cacheSet(key,d); return d; });
+}
+
+function feed(txt, warn){
+  var e = $('mFeed');
+  e.textContent = '● ' + txt;
+  e.className = 'live' + (warn ? ' warn' : '');
+}
+
+/* ==========================================================================
+   โหลดสารบัญไฟล์ทั้ง repo ครั้งเดียว (1 รีเควสต์ครอบทุกยูนิต)
+   ========================================================================== */
+function loadTree(force){
+  var ttl = force ? 0 : 120000;
+  return gh('/git/trees/' + REPO.branch + '?recursive=1', ttl).then(function(d){
+    TREE = (d.tree || []).filter(function(n){ return n.type === 'blob'; });
+    feed('online');
+    return TREE;
+  }).catch(function(e){
+    feed(e.message === 'RATE' ? 'quota spent' : 'offline', true);
+    throw e;
+  });
+}
+
+/* ไฟล์ของยูนิต */
+function filesOf(u){
+  if(!TREE) return [];
+  var base = u.dir + '/';
+  var out = TREE.filter(function(n){ return n.path.indexOf(base) === 0; });
+  if(u.prefix){
+    out = out.filter(function(n){
+      var rest = n.path.slice(base.length);
+      if(rest.indexOf('/') !== -1) return false;           // เอาเฉพาะไฟล์ลูกตรง
+      var low = rest.toLowerCase();
+      return u.prefix.some(function(p){ return low.indexOf(p) === 0; });
+    });
+  }
+  return out.sort(function(a,b){ return a.path.localeCompare(b.path); });
+}
+
+/* ==========================================================================
+   ตรวจจับไฟล์ใหม่ / แก้ไข / หาย
+   เทียบสารบัญรอบนี้กับ snapshot ที่เก็บไว้ใน localStorage
+   ครั้งแรกจะเก็บเงียบ ๆ ไม่ขึ้นแจ้งเตือน ไม่งั้นทุกไฟล์จะกลายเป็นของใหม่หมด
+   ========================================================================== */
+function readEvents(id){
+  try{ return JSON.parse(localStorage.getItem('pcc.ev.'+id) || '[]'); }catch(e){ return []; }
+}
+function detect(u, files){
+  var key = 'pcc.snap.' + u.id, prev = null;
+  try{ prev = JSON.parse(localStorage.getItem(key) || 'null'); }catch(e){}
+  var now = {};
+  files.forEach(function(f){ now[f.path] = f.sha; });
+
+  var r = { added:[], changed:[], removed:[], first: !prev };
+  if(prev){
+    for(var p in now){
+      if(!(p in prev)) r.added.push(p);
+      else if(prev[p] !== now[p]) r.changed.push(p);
+    }
+    for(var q in prev){ if(!(q in now)) r.removed.push(q); }
+
+    if(r.added.length || r.changed.length || r.removed.length){
+      var ev = readEvents(u.id), ts = new Date().toISOString();
+      r.added.forEach(function(p){ ev.unshift({t:ts,k:'CREATED',p:p}); });
+      r.changed.forEach(function(p){ ev.unshift({t:ts,k:'MODIFIED',p:p}); });
+      r.removed.forEach(function(p){ ev.unshift({t:ts,k:'REMOVED',p:p}); });
+      try{ localStorage.setItem('pcc.ev.'+u.id, JSON.stringify(ev.slice(0,300))); }catch(e){}
+    }
+  }
+  try{ localStorage.setItem(key, JSON.stringify(now)); }catch(e){}
+  return r;
+}
+
+/* ไฟล์ที่ถูกบันทึกว่า CREATED ภายใน 14 วัน ยังติดป้าย NEW อยู่ */
+function recentFlags(id){
+  var cut = Date.now() - 14*864e5, m = {};
+  readEvents(id).forEach(function(e){
+    if(new Date(e.t).getTime() < cut) return;
+    if(!m[e.p]) m[e.p] = e.k;
+  });
+  return m;
+}
+
+/* ==========================================================================
+   รหัสผ่าน
+   ========================================================================== */
+function sha256(s){
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function(buf){
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){
+      return ('0'+b.toString(16)).slice(-2);
+    }).join('');
+  });
+}
+function isOpen(id){ return sessionStorage.getItem('pcc.ok.'+id) === '1'; }
+function markOpen(id){ try{ sessionStorage.setItem('pcc.ok.'+id,'1'); }catch(e){} }
+
+function showGate(u){
+  pending = u;
+  $('gName').textContent = u.name;
+  $('gPath').textContent = u.dir + (u.prefix ? '  //  ' + u.prefix.join(', ') + '*' : '');
+  $('gMsg').textContent = '';
+  $('code').value = '';
+  $('gate').classList.remove('bad');
+  $('gate').classList.add('show');
+  setTimeout(function(){ $('code').focus(); }, 30);
+}
+function hideGate(){ $('gate').classList.remove('show'); pending = null; }
+
+function tryCode(){
+  if(!pending) return;
+  var u = pending, v = $('code').value.trim();
+  if(!v) return;
+  sha256('PCC/' + v).then(function(h){
+    if(h === u.hash){ markOpen(u.id); hideGate(); openUnit(u); }
+    else {
+      $('gate').classList.add('bad');
+      $('gMsg').textContent = '✖ Access denied — code rejected';
+      $('code').value = '';
+      setTimeout(function(){ $('gate').classList.remove('bad'); }, 1200);
+    }
+  });
+}
+
+/* ==========================================================================
+   หน้าแรก
+   ========================================================================== */
+function renderIndex(){
+  $('hUnits').textContent = UNITS.length;
+  $('hFiles').textContent = TREE ? TREE.length : '--';
+
+  var h = '';
+  UNITS.forEach(function(u,i){
+    var fs = filesOf(u);
+    var open = isOpen(u.id);
+    var flags = recentFlags(u.id);
+    var nNew = Object.keys(flags).filter(function(k){ return flags[k] === 'CREATED'; }).length;
+    h += '<div class="unit" data-u="'+u.id+'">'
+       +   (nNew ? '<span class="badge">'+nNew+' new</span>' : '')
+       +   '<div class="no">Unit &#47; '+String(i+1).padStart(2,'0')+'</div>'
+       +   '<h3>'+esc(u.name)+'</h3>'
+       +   '<div class="foot"><span>'+fs.length+' files</span>'
+       +   '<span class="state '+(open?'open':'lock')+'">'+(open?'&#9679; unlocked':'&#9632; locked')+'</span></div>'
+       + '</div>';
+  });
+  $('units').innerHTML = h;
+  Array.prototype.forEach.call(document.querySelectorAll('.unit'), function(el){
+    el.onclick = function(){
+      var u = UNITS.filter(function(x){ return x.id === el.getAttribute('data-u'); })[0];
+      if(isOpen(u.id)) openUnit(u); else showGate(u);
+    };
+  });
+}
+
+function renderGlobalLog(){
+  gh('/commits?per_page=14', 300000).then(function(cs){
+    $('globalLog').innerHTML = cs.map(function(c){
+      return commitRow(c);
+    }).join('') || '<div class="empty">No commits</div>';
+  }).catch(function(e){
+    $('globalLog').innerHTML = '<div class="empty">'+(e.message==='RATE'?'API quota spent &#8212; try again later':'Could not load')+'</div>';
+  });
+}
+
+function commitRow(c){
+  var d = new Date(c.commit.author.date);
+  var who = (c.author && c.author.login) || c.commit.author.name || '?';
+  var msg = c.commit.message.split('\n')[0];
+  return '<div class="ev">'
+    + '<span class="when">'+d.toISOString().slice(0,10)+'<br>'+d.toISOString().slice(11,16)+'</span>'
+    + '<span class="what"><a class="msg" href="'+WEB+'/commit/'+c.sha+'" target="_blank" rel="noopener">'+esc(msg)+'</a>'
+    + '<span class="who">'+esc(who)+' &#183; '+c.sha.slice(0,7)+'</span></span>'
+    + '</div>';
+}
+
+/* ==========================================================================
+   หน้ายูนิต
+   ========================================================================== */
+function openUnit(u){
+  unit = u; curFile = null; curText = '';
+  $('index').style.display = 'none';
+  $('view').classList.add('show');
+  window.scrollTo(0,0);
+
+  $('cUnit').textContent = u.name;
+  $('vName').textContent = u.name;
+  $('vPath').textContent = u.dir + '/' + (u.prefix ? '  →  ' + u.prefix.join('* , ') + '*' : '');
+  $('ghFolder').href = WEB + '/tree/' + REPO.branch + '/' + encPath(u.dir);
+  $('ghGallery').style.display = u.gallery ? '' : 'none';
+  if(u.gallery) $('ghGallery').href = 'Paradise/paradise_central_control/gallery/index.html';
+
+  $('viewer').innerHTML = '<div class="empty">Select a file from the manifest</div>';
+  $('vbar').style.display = 'none';
+  $('vfName').innerHTML = '<span>&#91; Viewer &#93;</span>';
+
+  paintUnit();
+  loadCommitLog(u);
+}
+
+function paintUnit(){
+  var u = unit, files = filesOf(u);
+  detected = detect(u, files);
+  var flags = recentFlags(u.id);
+
+  var bytes = files.reduce(function(a,f){ return a + (f.size||0); }, 0);
+  var last = null;
+
+  $('telem').innerHTML =
+      cellT('Files', files.length)
+    + cellT('Payload', bytes >= 1048576 ? (bytes/1048576).toFixed(1) + ' MB' : (bytes/1024).toFixed(0) + ' KB')
+    + cellT('New &#47;14d', Object.keys(flags).filter(function(k){return flags[k]==='CREATED';}).length, true)
+    + cellT('Mod &#47;14d', Object.keys(flags).filter(function(k){return flags[k]==='MODIFIED';}).length)
+    + cellT('Scope', u.prefix ? 'Prefix match' : 'Folder', false, true)
+    + cellT('Last scan', new Date().toISOString().slice(11,19) + 'Z', false, true);
+
+  // แถบแจ้งเตือนเมื่อเจอของใหม่ในรอบนี้
+  var a = detected;
+  if(!a.first && (a.added.length || a.changed.length || a.removed.length)){
+    $('alertSlot').innerHTML = '<div class="alert"><b>&#9888; Change detected</b>'
+      + '<span>'+a.added.length+' created &#183; '+a.changed.length+' modified &#183; '+a.removed.length+' removed</span>'
+      + '<span style="color:var(--dim)">'+esc(a.added.concat(a.changed).slice(0,3).map(base).join('  /  '))+'</span></div>';
+  } else if(a.first){
+    $('alertSlot').innerHTML = '<div class="alert" style="border-color:var(--line2)"><b style="color:var(--dim)">&#9633; Baseline stored</b>'
+      + '<span style="color:var(--dim)">บันทึกสารบัญรอบแรกของยูนิตนี้แล้ว &#8212; ไฟล์ที่เพิ่มเข้ามาหลังจากนี้จะขึ้นแจ้งเตือนเอง</span></div>';
+  } else {
+    $('alertSlot').innerHTML = '';
+  }
+
+  renderManifest(files, flags);
+  renderDetLog(u.id);
+}
+
+function cellT(k,v,red,sm){
+  return '<div><div class="k">'+k+'</div><div class="v'+(sm?' sm':'')+(red&&v?' red':'')+'">'+v+'</div></div>';
+}
+function base(p){ return p.split('/').pop(); }
+
+function renderManifest(files, flags){
+  $('mfCount').textContent = files.length + ' blobs';
+  if(!files.length){ $('manifest').innerHTML = '<div class="empty">Folder is empty</div>'; return; }
+
+  // จัดกลุ่มตามโฟลเดอร์ย่อย เพื่อไม่ให้แกลเลอรีที่มีรูปเป็นร้อยล้นหน้า
+  var groups = {}, order = [];
+  files.forEach(function(f){
+    var rest = f.path.slice(unit.dir.length + 1);
+    var i = rest.lastIndexOf('/');
+    var g = i === -1 ? '.' : rest.slice(0,i);
+    if(!groups[g]){ groups[g] = []; order.push(g); }
+    groups[g].push(f);
+  });
+  order.sort(function(a,b){ return a === '.' ? -1 : b === '.' ? 1 : a.localeCompare(b); });
+
+  var h = '';
+  order.forEach(function(g){
+    var list = groups[g];
+    var open = list.length <= 14;
+    var hasNew = list.some(function(f){ return flags[f.path] === 'CREATED'; });
+    h += '<details class="grp"'+(open||hasNew?' open':'')+'>'
+       +  '<summary><span>'+(g === '.' ? '&#47;&#47; root' : esc(g))+'</span><span>'+list.length+'</span></summary>';
+    list.forEach(function(f){
+      var fl = flags[f.path];
+      h += '<div class="f" data-p="'+esc(f.path)+'">'
+         +   '<span class="n">'+esc(base(f.path))+'</span>'
+         +   (fl === 'CREATED' ? '<span class="new">New</span>' : fl === 'MODIFIED' ? '<span class="mod">Mod</span>' : '')
+         +   '<span class="s">'+fmtSize(f.size)+'</span>'
+         + '</div>';
+    });
+    h += '</details>';
+  });
+  $('manifest').innerHTML = h;
+
+  Array.prototype.forEach.call($('manifest').querySelectorAll('.f'), function(el){
+    el.onclick = function(){ openFile(el.getAttribute('data-p'), el); };
+  });
+}
+function fmtSize(b){
+  if(b == null) return '--';
+  if(b < 1024) return b + ' B';
+  if(b < 1048576) return (b/1024).toFixed(1) + ' K';
+  return (b/1048576).toFixed(1) + ' M';
+}
+
+/* ---------- commit log ของยูนิต ---------- */
+function loadCommitLog(u){
+  $('commitLog').innerHTML = '<div class="empty">Loading&#8230;</div>';
+
+  // โฟลเดอร์ปกติถาม path เดียวพอ
+  // ยูนิตแบบ prefix ต้องถามทีละไฟล์แล้วรวมกัน เพราะ API กรองด้วย path เต็มเท่านั้น
+  var paths = u.prefix ? filesOf(u).map(function(f){ return f.path; }).slice(0,6) : [u.dir];
+  if(!paths.length){ $('commitLog').innerHTML = '<div class="empty">No files to trace</div>'; return; }
+
+  Promise.all(paths.map(function(p){
+    return gh('/commits?path=' + encodeURIComponent(p) + '&per_page=20', 300000).catch(function(){ return []; });
+  })).then(function(sets){
+    var seen = {}, all = [];
+    sets.forEach(function(s){ (s||[]).forEach(function(c){ if(!seen[c.sha]){ seen[c.sha] = 1; all.push(c); } }); });
+    all.sort(function(a,b){ return new Date(b.commit.author.date) - new Date(a.commit.author.date); });
+    all = all.slice(0,25);
+    $('clCount').textContent = all.length + ' entries';
+    $('commitLog').innerHTML = all.map(commitRow).join('') || '<div class="empty">No commits touch this path</div>';
+  }).catch(function(e){
+    $('commitLog').innerHTML = '<div class="empty">'+(e.message==='RATE'?'API quota spent':'Could not load')+'</div>';
+  });
+}
+
+/* ---------- detection log ---------- */
+function renderDetLog(id){
+  var ev = readEvents(id);
+  if(!ev.length){
+    $('detLog').innerHTML = '<div class="empty">ยังไม่พบการเปลี่ยนแปลงนับจากรอบแรก</div>';
+    return;
+  }
+  $('detLog').innerHTML = ev.slice(0,60).map(function(e){
+    var d = new Date(e.t);
+    return '<div class="ev">'
+      + '<span class="when">'+d.toISOString().slice(0,10)+'<br>'+d.toISOString().slice(11,16)+'</span>'
+      + '<span class="what"><a class="msg" href="'+WEB+'/blob/'+REPO.branch+'/'+encPath(e.p)+'" target="_blank" rel="noopener">'+esc(base(e.p))+'</a>'
+      + '<span class="who">'+esc(e.p)+'</span></span>'
+      + '<span class="kind '+e.k+'">'+e.k+'</span>'
+      + '</div>';
+  }).join('');
+}
+
+/* ==========================================================================
+   Viewer
+   ========================================================================== */
+function openFile(path, el){
+  Array.prototype.forEach.call($('manifest').querySelectorAll('.f'), function(x){ x.classList.remove('sel'); });
+  if(el) el.classList.add('sel');
+
+  var f = filesOf(unit).filter(function(x){ return x.path === path; })[0];
+  curFile = f;
+  $('vfName').innerHTML = '<span>&#91; '+esc(base(path))+' &#93;</span><span>'+fmtSize(f && f.size)+'</span>';
+  $('bEdit').href = WEB + '/edit/' + REPO.branch + '/' + encPath(path);
+  $('bHist').href = WEB + '/commits/' + REPO.branch + '/' + encPath(path);
+
+  if(IMG.test(path)){
+    $('vbar').style.display = 'none';
+    $('viewer').innerHTML = '<div class="imgwrap"><img src="'+RAW+encPath(path)+'?v='+(f?f.sha.slice(0,8):'')+'" alt=""></div>';
+    return;
+  }
+
+  $('vbar').style.display = '';
+  $('find').value = '';
+  $('viewer').innerHTML = '<div class="empty">Reading&#8230;</div>';
+
+  fetch(RAW + encPath(path) + '?v=' + (f ? f.sha.slice(0,8) : Date.now()), { cache:'no-store' })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(function(t){
+      curText = t;
+      // ไฟล์ *_base64 ถอดรหัสให้อ่านอัตโนมัติ
+      if(/base64/i.test(base(path))){
+        var dec = tryDecode(t);
+        if(dec !== null){ curText = dec; toast('Base64 decoded for display'); }
+      }
+      paintDoc();
+    })
+    .catch(function(e){ $('viewer').innerHTML = '<div class="empty">Could not read file &#8212; '+esc(e.message)+'</div>'; });
+}
+
+function paintDoc(){
+  var q = $('find').value.trim().toLowerCase();
+  var lines = curText.replace(/\r\n/g,'\n').split('\n');
+  var h = '', shown = 0;
+  for(var i=0;i<lines.length;i++){
+    var L = lines[i];
+    if(q && L.toLowerCase().indexOf(q) === -1) continue;
+    shown++;
+    var cls = 'ln';
+    if(!L.trim()) cls += ' blank';
+    else if(/^[=\-_*#\s]{5,}$/.test(L) || /^=+\s*\S.*\s*=+$/.test(L)) cls += ' sep';
+    if(q) cls += ' hit';
+    var body = esc(L) || '&#183;';
+    if(q){
+      var re = new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+      body = esc(L).replace(re,'<mark>$1</mark>');
+    }
+    h += '<div class="'+cls+'"><span class="g">'+(i+1)+'</span><span class="t">'+body+'</span></div>';
+  }
+  if(!shown) h = '<div class="empty">No line matches</div>';
+  $('viewer').innerHTML = '<div class="doc">'+h+'</div>';
+
+  var real = lines.filter(function(l){ return l.trim() && !/^[=\-_*#\s]{5,}$/.test(l); }).length;
+  $('vfName').innerHTML = '<span>&#91; '+esc(base(curFile.path))+' &#93;</span>'
+    + '<span>'+lines.length+' lines &#183; '+real+' entries'+(q ? ' &#183; '+shown+' match' : '')+'</span>';
+}
+
+function tryDecode(s){
+  try{
+    var clean = s.replace(/\s+/g,'');
+    if(!clean || !/^[A-Za-z0-9+/=]+$/.test(clean)) return null;
+    var bin = atob(clean);
+    var bytes = new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8',{fatal:false}).decode(bytes);
+  }catch(e){ return null; }
+}
+function encodeB64(s){
+  var bytes = new TextEncoder().encode(s), bin = '';
+  for(var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+/* ==========================================================================
+   Wiring
+   ========================================================================== */
+$('back').onclick = function(){
+  $('view').classList.remove('show');
+  $('index').style.display = '';
+  unit = null;
+  renderIndex();
+  window.scrollTo(0,0);
+};
+$('lock').onclick = function(){
+  if(!unit) return;
+  sessionStorage.removeItem('pcc.ok.' + unit.id);
+  toast('Unit locked');
+  $('back').onclick();
+};
+$('refresh').onclick = function(){
+  feed('scanning');
+  loadTree(true).then(function(){ paintUnit(); loadCommitLog(unit); toast('Rescanned'); })
+    .catch(function(){ toast('Rescan failed'); });
+};
+$('clrDet').onclick = function(){
+  if(!unit) return;
+  localStorage.removeItem('pcc.ev.' + unit.id);
+  renderDetLog(unit.id);
+  paintUnit();
+  toast('Detection log cleared');
+};
+
+$('gOk').onclick = tryCode;
+$('gCancel').onclick = hideGate;
+$('code').onkeydown = function(e){ if(e.key === 'Enter') tryCode(); if(e.key === 'Escape') hideGate(); };
+$('gate').onclick = function(e){ if(e.target === $('gate')) hideGate(); };
+
+$('find').oninput = function(){ if(curFile && !IMG.test(curFile.path)) paintDoc(); };
+$('bCopy').onclick = function(){
+  navigator.clipboard.writeText(curText).then(function(){ toast('Copied'); }, function(){ toast('Copy blocked — select manually'); });
+};
+$('bB64').onclick = function(){
+  curText = encodeB64(curText); paintDoc(); toast('Encoded to Base64');
+};
+$('bDec').onclick = function(){
+  var d = tryDecode(curText);
+  if(d === null){ toast('Not valid Base64'); return; }
+  curText = d; paintDoc(); toast('Decoded');
+};
+$('bDl').onclick = function(){
+  var b = new Blob([curText], {type:'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = base(curFile.path);
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+/* ==========================================================================
+   Boot + สแกนซ้ำทุก 5 นาที (60 req/ชม. คือเพดาน เลยไม่ยิงถี่กว่านี้)
+   ========================================================================== */
+paintRate();
+loadTree().then(function(){
+  renderIndex();
+  renderGlobalLog();
+}).catch(function(){
+  renderIndex();
+  $('globalLog').innerHTML = '<div class="empty">GitHub API unreachable or quota spent</div>';
+});
+
+setInterval(function(){
+  if(document.hidden) return;
+  loadTree(true).then(function(){
+    if(unit) paintUnit(); else renderIndex();
+  }).catch(function(){});
+}, 300000);
+</script>
+</body>
+</html>
