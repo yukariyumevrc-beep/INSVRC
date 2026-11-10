@@ -15,6 +15,7 @@
     { "name": "BlackPaw — อีเวนต์",      "path": "../../BlackPaw/Gallery/event_vertical" },
     { "name": "APEX — แนวตั้ง",          "path": "../../no_paradise_contorl/APEX/Gallery/apex_vertical" },
     { "name": "APEX — แนวนอน",          "path": "../../no_paradise_contorl/APEX/Gallery/apex_wide" },
+    { "name": "APEX — โปรโมท",          "path": "../../no_paradise_contorl/APEX/Gallery/promote_vertical" },
     { "name": "Partner — แนวตั้ง",       "path": "Partner/partner_vertical" },
     { "name": "Partner — แนวนอน",       "path": "Partner/partner_wide" }
   ]
