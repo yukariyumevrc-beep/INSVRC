@@ -1,5 +1,5 @@
 # NEW GEN BLACKLIST V3
-# generated 2026-11-05 17:26 UTC by build_blacklist.py - do not edit by hand, edit the source file
+# generated 2026-11-27 01:45 UTC by build_blacklist.py - do not edit by hand, edit the source file
 # format: usr_id | DisplayName | note    (any field may be omitted, '#' starts a comment)
 # only DisplayName can be matched in-world: Udon has no access to usr_ ids
 #!count=22
@@ -12,6 +12,7 @@ usr_7d2de0fa-55cc-42ad-b8a2-fdd8e4d50253 | jt207455 0253
 usr_13b145cf-b5f3-4cc9-91c1-c77b75fa421f | jt207455 421f
 usr_4dd86bae-0a9f-4fca-9d13-ca578b16650b | jt207455 650b
 usr_35ffbed1-3b42-4f41-b6ed-f74e95e5e747 | jt207455 e747
+usr_0f4893fe-bbb8-4f15-8677-9a45bd19b68b | Kasugi Keito
 KasugiGamer
 usr_bcbbb9f6-3b09-4617-b43e-518a1e473270 | kawinkhwylek 3270
 usr_b7fdd154-27b8-4a3c-a392-8e3faa5c62f1 | KIKIKIKI7397
@@ -25,4 +26,3 @@ RossoWhero
 usr_8253c08c-d80d-49ad-bc70-c647bc4405ee | Shionrosso
 usr_cd411b24-56d5-4f06-947e-f0ec78dadfd0 | Titaria
 Wireder
-usr_0f4893fe-bbb8-4f15-8677-9a45bd19b68b | 【Shion-Yasashi】
